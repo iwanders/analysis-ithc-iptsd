@@ -261,6 +261,7 @@ Scenario = namedtuple("Scenario", ["filename", "max_index", "interp"])
 
 test_scenarios = {
     "slanted_incontact_tip_loss_orig":Scenario("./slanted_incontact.json.gz", max_index=73, interp=cpp_interpolate_pos),
+    "slanted_incontact_tip_loss_orig_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
     "slanted_incontact_tip_loss_new":Scenario("./slanted_incontact.json.gz", max_index=73, interp=changed_interpolate),
     "slanted_incontact_tip_loss_new_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=changed_interpolate),
 }
@@ -289,7 +290,7 @@ if __name__ == "__main__":
     for i, r in enumerate(d):
         if scenario.max_index is not None and i > scenario.max_index:
             break
-        if r.type == EntryType.IPTS_DFT_ID_POSITION:
+        if r.type == EntryType.IPTS_DFT_ID_POSITION2:
             payload = r.payload
             print("\n\n\n")
             # print("x")
@@ -304,10 +305,12 @@ if __name__ == "__main__":
             pos1.append([x,y])
             print("Tip", x,y)
 
+            print("Rows: ")
             for r in range(payload.rows):
-                print("Row: ", r)
-                print(payload.x[r])
-                print(payload.y[r])
+                print(f"x[{r}]", payload.x[r])
+            print()
+            for r in range(payload.rows):
+                print(f"y[{r}]", payload.y[r])
 
 
 
