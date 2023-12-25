@@ -81,9 +81,9 @@ def cpp_interpolate_pos(row, config):
     # // get phase-aligned amplitudes of the three center components
     amp = float(math.hypot(row.iq[maxi][REAL], row.iq[maxi][IMAG]))
 
-    print(f"amp: {amp}")
-    print(f"maxi: {maxi}")
-    print(f"maxd: {maxd}")
+    # print(f"amp: {amp}")
+    # print(f"maxi: {maxi}")
+    # print(f"maxd: {maxd}")
     
     if amp < config.dft_position_min_amp:
         return float("NaN")
@@ -92,17 +92,17 @@ def cpp_interpolate_pos(row, config):
     # const f64 cos = gsl::at(row.imag, maxi) / amp;
     f64_sin = float(row.iq[maxi][REAL] / amp)
     f64_cos = float(row.iq[maxi][IMAG] / amp)
-    print(f"f64_sin: {f64_sin}")
-    print(f"f64_cos: {f64_cos}")
+    # print(f"f64_sin: {f64_sin}")
+    # print(f"f64_cos: {f64_cos}")
 
     x = [
         f64_sin * row.iq[maxi - 1][REAL] + f64_cos * row.iq[maxi - 1][IMAG],
         amp,
         f64_sin * row.iq[maxi + 1][REAL] + f64_cos * row.iq[maxi + 1][IMAG],
     ]
-    print(f"x[0]: {x[0]}")
-    print(f"x[1]: {x[1]}")
-    print(f"x[2]: {x[2]}")
+    # print(f"x[0]: {x[0]}")
+    # print(f"x[1]: {x[1]}")
+    # print(f"x[2]: {x[2]}")
 
     # // convert the amplitudes into something we can fit a parabola to
     try:
@@ -111,9 +111,9 @@ def cpp_interpolate_pos(row, config):
         return float("NaN")
         
 
-    print(f"x[0]: {x[0]}")
-    print(f"x[1]: {x[1]}")
-    print(f"x[2]: {x[2]}")
+    # print(f"x[0]: {x[0]}")
+    # print(f"x[1]: {x[1]}")
+    # print(f"x[2]: {x[2]}")
 
     # // check orientation of fitted parabola
     if (x[0] + x[2] <= (2.0 * x[1])):
@@ -122,7 +122,7 @@ def cpp_interpolate_pos(row, config):
     # // find critical point of fitted parabola
     # const f64 d = (x[0] - x[2]) / (2 * (x[0] - 2 * x[1] + x[2]));
     f64_d = (x[0] - x[2]) / (2.0 * (x[0] - 2.0 * x[1] + x[2]))
-    print(f"f64_d: {f64_d}")
+    # print(f"f64_d: {f64_d}")
 
 
     return row.first + maxi + clamp(f64_d, mind, maxd)
@@ -176,15 +176,21 @@ def test_pos():
 
 # test_pos()
 
-def show_trajectory(traj):
+def show_trajectory(traj, traj2=[]):
     import matplotlib.pyplot as plt
     x = [v[0] for v in traj]
     y = [v[1] for v in traj]
+    x2 = [v[0] for v in traj2]
+    y2 = [v[1] for v in traj2]
 
     plt.plot(x, y)
+    plt.plot(x2, y2)
+    plt.xlim([0, 68])
+    plt.ylim([0, 44])
     ax = plt.gca()
     ax.set_aspect('equal', adjustable='box')
     plt.show()
+
 
 if __name__ == "__main__":
     d = load(sys.argv[1])
@@ -193,19 +199,21 @@ if __name__ == "__main__":
     config = Config()
 
     pos = []
+    pos1 = []
+    
 
     for r in d:
         if r.type == EntryType.IPTS_DFT_ID_POSITION:
             payload = r.payload
-            print("x")
             x = cpp_interpolate_pos(payload.x[0], config)
-            print("y")
             y = cpp_interpolate_pos(payload.y[0], config)
-            c = [x,y]
-            pos.append(c)
-            print(c)
+            pos.append([x,y])
+            x = cpp_interpolate_pos(payload.x[1], config)
+            y = cpp_interpolate_pos(payload.y[1], config)
+            pos1.append([x,y])
 
-    show_trajectory(pos)
+
+    show_trajectory(pos, pos1)
 
 
 
