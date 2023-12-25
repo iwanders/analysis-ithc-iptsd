@@ -30,8 +30,10 @@ class Config:
         self.dft_position_exp = -0.7
 
 def load(p):
+    import gzip
     entries = []
-    with open(p) as f:
+    opener = gzip.open if p.endswith("gz") else open
+    with opener(p) as f:
         d = json.load(f)
     for r in d:
         looked_up_type = EntryType[r["type"]]
@@ -58,10 +60,9 @@ def get_metadata(d):
             return z.payload
 
 
-import math
 clamp = lambda x, y, z: max(min(x, z), y)
-
 def cpp_interpolate_pos(row, config):
+    import math
 
     # // assume the center component has the max amplitude
     maxi = int(IPTS_DFT_NUM_COMPONENTS / 2)
@@ -192,10 +193,88 @@ def show_trajectory(traj, traj2=[]):
     plt.show()
 
 
+def changed_interpolate(row, config):
+    import math
+    maxi = int(IPTS_DFT_NUM_COMPONENTS / 2)
+    mind = -0.5
+    maxd = 0.5
+
+    iq_mag = [math.hypot(I, Q) for I, Q in row.iq]
+    print(iq_mag)
+    ibest = 0
+    vbest = -1000000
+    for i, v in enumerate(iq_mag):
+        if vbest < v:
+            ibest = i 
+            vbest = v
+
+    maxi = ibest
+    # // get phase-aligned amplitudes of the three center components
+    amp = float(math.hypot(row.iq[maxi][REAL], row.iq[maxi][IMAG]))
+
+
+    if amp < config.dft_position_min_amp:
+        return float("NaN")
+
+
+    f64_sin = float(row.iq[maxi][REAL] / amp)
+    f64_cos = float(row.iq[maxi][IMAG] / amp)
+
+
+    x = [
+        f64_sin * row.iq[maxi - 1][REAL] + f64_cos * row.iq[maxi - 1][IMAG],
+        amp,
+        f64_sin * row.iq[maxi + 1][REAL] + f64_cos * row.iq[maxi + 1][IMAG],
+    ]
+
+    print(x)
+
+    # if (x[0] + x[2] <= (2.0 * x[1])):
+        # print("bail")
+        # return float("NaN")
+
+    f64_d = float(x[0] - x[2]) / (2.0 * (x[0] - 2.0 * x[1] + x[2]))
+    return row.first + maxi + clamp(f64_d, mind, maxd)
+    
+
+def slanted_incontact_tip_loss_tip_y_row():
+    row = Row(freq=1210480000, mag=510696, first=18, last=26, mid=22, zero=0, iq=[[33, 122], [53, 201], [94, 352], [150, 569], [186, 690], [230, 868], [159, 570], [89, 308], [49, 166]])
+    print(row)
+    config = Config()
+
+    tipx = changed_interpolate(row, config)
+    print("tipx Should be around 22")
+    print("tipx", tipx)
+
+    row = Row(freq=1187205120, mag=419413, first=24, last=32, mid=28, zero=0, iq=[[1, 0], [0, 0], [-4, 8], [-39, 81], [-282, 583], [-15, 26], [4, -14], [5, -13], [4, -11]])
+    penx = changed_interpolate(row, config)
+    print("penx", penx)
+
+    
+
+    sys.exit()
+# slanted_incontact_tip_loss_tip_y_row()
+
+
+
+Scenario = namedtuple("Scenario", ["filename", "max_index", "interp"])
+
+test_scenarios = {
+    "slanted_incontact_tip_loss_orig":Scenario("./slanted_incontact.json.gz", max_index=73, interp=cpp_interpolate_pos),
+    "slanted_incontact_tip_loss_new":Scenario("./slanted_incontact.json.gz", max_index=73, interp=changed_interpolate),
+    "slanted_incontact_tip_loss_new_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=changed_interpolate),
+}
+
 if __name__ == "__main__":
-    d = load(sys.argv[1])
+    # Metadata(size=MetataSize(rows=46, columns=68, width=27389, height=18259), transform=MetataTransform(xx=408.791, yx=0, tx=0, xy=0, yy=405.756, ty=0))
+    default_interpolate = cpp_interpolate_pos
+    scenario = test_scenarios.get(sys.argv[1], Scenario(sys.argv[1], max_index=None, interp=default_interpolate))
+
+    d = load(scenario.filename)
+    interpolate = scenario.interp
 
     metadata = get_metadata(d)
+    print(metadata)
     config = Config()
 
 
@@ -207,28 +286,29 @@ if __name__ == "__main__":
         if r.type == EntryType.IPTS_DFT_ID_POSITION:
             positions.append(r.payload)
 
-    print(len(positions))
-
     for i, r in enumerate(d):
-        # if i > 500:
-            # break
+        if scenario.max_index is not None and i > scenario.max_index:
+            break
         if r.type == EntryType.IPTS_DFT_ID_POSITION:
             payload = r.payload
-            
-            print("x")
-            x = cpp_interpolate_pos(payload.x[0], config)
-            print("y")
-            y = cpp_interpolate_pos(payload.y[0], config)
-            print(x,y)
-            # if (i == 520):
-                # break;
-
-
-
+            print("\n\n\n")
+            # print("x")
+            x = interpolate(payload.x[0], config)
+            # print("y")
+            y = interpolate(payload.y[0], config)
             pos.append([x,y])
-            x = cpp_interpolate_pos(payload.x[1], config)
-            y = cpp_interpolate_pos(payload.y[1], config)
+            print("Pos", x,y)
+
+            x = interpolate(payload.x[1], config)
+            y = interpolate(payload.y[1], config)
             pos1.append([x,y])
+            print("Tip", x,y)
+
+            for r in range(payload.rows):
+                print("Row: ", r)
+                print(payload.x[r])
+                print(payload.y[r])
+
 
 
     show_trajectory(pos, pos1)
