@@ -121,9 +121,9 @@ def cpp_interpolate_pos(row, config):
 
     # // find critical point of fitted parabola
     # const f64 d = (x[0] - x[2]) / (2 * (x[0] - 2 * x[1] + x[2]));
-    f64_d = (x[0] - x[2]) / (2.0 * (x[0] - 2.0 * x[1] + x[2]))
+    f64_d = float(x[0] - x[2]) / (2.0 * (x[0] - 2.0 * x[1] + x[2]))
     # print(f"f64_d: {f64_d}")
-
+    # print(f"row.first: {row.first}")
 
     return row.first + maxi + clamp(f64_d, mind, maxd)
 
@@ -198,15 +198,33 @@ if __name__ == "__main__":
     metadata = get_metadata(d)
     config = Config()
 
+
     pos = []
     pos1 = []
-    
 
+    positions = []
     for r in d:
         if r.type == EntryType.IPTS_DFT_ID_POSITION:
+            positions.append(r.payload)
+
+    print(len(positions))
+
+    for i, r in enumerate(d):
+        # if i > 500:
+            # break
+        if r.type == EntryType.IPTS_DFT_ID_POSITION:
             payload = r.payload
+            
+            print("x")
             x = cpp_interpolate_pos(payload.x[0], config)
+            print("y")
             y = cpp_interpolate_pos(payload.y[0], config)
+            print(x,y)
+            # if (i == 520):
+                # break;
+
+
+
             pos.append([x,y])
             x = cpp_interpolate_pos(payload.x[1], config)
             y = cpp_interpolate_pos(payload.y[1], config)
