@@ -12,7 +12,11 @@ IMAG = 1
 class EntryType(Enum):
     IPTS_DFT_ID_POSITION = 6
     IPTS_DFT_ID_POSITION2 = 7
+    IPTS_DFT_ID_BUTTON   = 9
+    IPTS_DFT_ID_PRESSURE = 11
     METADATA = 999
+
+
 
 DftWindow = namedtuple("Window", ["rows", "type", "x", "y"])
 Row = namedtuple("Row", ['freq', 'mag', 'first', 'last', 'mid', 'zero', 'iq'])
@@ -37,7 +41,7 @@ def load(p):
         d = json.load(f)
     for r in d:
         looked_up_type = EntryType[r["type"]]
-        if looked_up_type in (EntryType.IPTS_DFT_ID_POSITION, EntryType.IPTS_DFT_ID_POSITION2):
+        if looked_up_type in (EntryType.IPTS_DFT_ID_POSITION, EntryType.IPTS_DFT_ID_POSITION2, EntryType.IPTS_DFT_ID_BUTTON, EntryType.IPTS_DFT_ID_PRESSURE):
             payload = r["payload"]
             x = [Row(**v) for v in payload["x"]]
             y = [Row(**v) for v in payload["y"]]
@@ -200,7 +204,7 @@ def changed_interpolate(row, config):
     maxd = 0.5
 
     iq_mag = [math.hypot(I, Q) for I, Q in row.iq]
-    print(iq_mag)
+    # print(iq_mag)
     ibest = 0
     vbest = -1000000
     for i, v in enumerate(iq_mag):
@@ -227,7 +231,7 @@ def changed_interpolate(row, config):
         f64_sin * row.iq[maxi + 1][REAL] + f64_cos * row.iq[maxi + 1][IMAG],
     ]
 
-    print(x)
+    # print(x)
 
     # if (x[0] + x[2] <= (2.0 * x[1])):
         # print("bail")
@@ -308,7 +312,7 @@ def process_data(d, interpolate_fun):
 def print_data(d):
     for i, r in enumerate(d):
         payload = r.payload
-        if r.type in (EntryType.IPTS_DFT_ID_POSITION, EntryType.IPTS_DFT_ID_POSITION2):
+        if r.type in (EntryType.IPTS_DFT_ID_POSITION, EntryType.IPTS_DFT_ID_POSITION2,  EntryType.IPTS_DFT_ID_BUTTON,  EntryType.IPTS_DFT_ID_PRESSURE):
             print(r.type)
             print("Rows: ")
             for r in range(payload.rows):
@@ -332,6 +336,7 @@ if __name__ == "__main__":
 
 
     res = process_data(d, interpolate)
-    show_trajectory(res)
+    print_data(d)
+    # show_trajectory(res)
 
 
