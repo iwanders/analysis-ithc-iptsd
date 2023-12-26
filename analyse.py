@@ -197,6 +197,21 @@ def show_trajectory(trajectories={}):
     plt.show()
 
 
+def show_plots(trajectories={}):
+    import matplotlib.pyplot as plt
+    print(trajectories)
+    for n,t in trajectories.items():
+        x = [v[0] for v in t]
+        y = [v[1] for v in t]
+        print(x)
+        linewidth = 1.0
+        plt.plot(x, y, label=n, linewidth=linewidth)
+
+    plt.legend(loc="upper right")
+    ax = plt.gca()
+    plt.show()
+
+
 def changed_interpolate(row, config):
     import math
     maxi = int(IPTS_DFT_NUM_COMPONENTS / 2)
@@ -309,6 +324,33 @@ def process_data(d, interpolate_fun):
     return result
 
 
+def do_things_on_frame(frame, interpolate_fun):
+
+    pos_payload = frame[EntryType.IPTS_DFT_ID_POSITION2]
+    print(pos_payload)
+
+
+    x = interpolate(pos_payload.x[0], config)
+    y = interpolate(pos_payload.y[0], config)
+
+    def row_plottable(r, index, s=1.0):
+        return [(r.first + i, r.iq[i][index] * s) for i in range(9)]
+
+    # make IQs into plottables.
+
+    I = 0
+    Q = 1
+
+    results = {
+        "x0_I": row_plottable(pos_payload.x[0], I),
+        "x0_Q": row_plottable(pos_payload.x[0], Q),
+        "x1_I": row_plottable(pos_payload.x[1], I),
+        "x1_Q": row_plottable(pos_payload.x[1], Q),
+    }
+
+    show_plots(results)
+    # show_plots(results)
+
 def print_data(d):
     for i, r in enumerate(d):
         payload = r.payload
@@ -322,6 +364,16 @@ def print_data(d):
                 print(f"y[{r}]", payload.y[r])
 
 
+def make_frames(d):
+    frames = []
+    frame = { }
+    for z in d:
+        frame[z.type] = z.payload
+        if z.type == EntryType.IPTS_DFT_ID_POSITION:
+            frames.append(frame)
+            frame = {}
+    return frames
+
 if __name__ == "__main__":
     # Metadata(size=MetataSize(rows=46, columns=68, width=27389, height=18259), transform=MetataTransform(xx=408.791, yx=0, tx=0, xy=0, yy=405.756, ty=0))
     default_interpolate = cpp_interpolate_pos
@@ -334,9 +386,19 @@ if __name__ == "__main__":
     print(metadata)
     config = Config()
 
+    # res = process_data(d, interpolate)
+    # print_data(d)
+    # show_trajectory(res)
 
-    res = process_data(d, interpolate)
-    print_data(d)
+    frames = make_frames(d)
+
+
+    print("Frames: ", len(frames))
+    f = frames[200]
+
+    res = do_things_on_frame(f, interpolate)
+    # res = process_data(d, interpolate)
+    # print_data(d)
     # show_trajectory(res)
 
 
