@@ -177,17 +177,17 @@ def test_pos():
 
 # test_pos()
 
-def show_trajectory(traj, traj2=[]):
+def show_trajectory(trajectories={}):
     import matplotlib.pyplot as plt
-    x = [v[0] for v in traj]
-    y = [v[1] for v in traj]
-    x2 = [v[0] for v in traj2]
-    y2 = [v[1] for v in traj2]
 
-    plt.plot(x, y)
-    plt.plot(x2, y2)
+    for n,t in trajectories.items():
+        x = [v[0] for v in t]
+        y = [v[1] for v in t]
+        plt.plot(x, y, label=n)
+        
     plt.xlim([0, 68])
     plt.ylim([0, 44])
+    plt.legend(loc="upper right")
     ax = plt.gca()
     ax.set_aspect('equal', adjustable='box')
     plt.show()
@@ -264,7 +264,59 @@ test_scenarios = {
     "slanted_incontact_tip_loss_orig_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
     "slanted_incontact_tip_loss_new":Scenario("./slanted_incontact.json.gz", max_index=73, interp=changed_interpolate),
     "slanted_incontact_tip_loss_new_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=changed_interpolate),
+    "spiral_out_loss_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
+    "spiral_out_loss_new_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=changed_interpolate),
 }
+
+def process_data(d, interpolate_fun):
+    result = {}
+    
+    pos_from_pos = []
+    ring_pos_from_pos = []
+    pos_from_pos2 = []
+    ring_pos_from_pos2 = []
+
+    for i, r in enumerate(d):
+        payload = r.payload
+        if scenario.max_index is not None and i > scenario.max_index:
+            break
+        if r.type == EntryType.IPTS_DFT_ID_POSITION2:
+            x = interpolate(payload.x[0], config)
+            y = interpolate(payload.y[0], config)
+            pos_from_pos2.append([x,y])
+
+            x = interpolate(payload.x[1], config)
+            y = interpolate(payload.y[1], config)
+            ring_pos_from_pos2.append([x,y])
+            
+        if r.type == EntryType.IPTS_DFT_ID_POSITION:
+            x = interpolate(payload.x[0], config)
+            y = interpolate(payload.y[0], config)
+            pos_from_pos.append([x,y])
+
+            x = interpolate(payload.x[1], config)
+            y = interpolate(payload.y[1], config)
+            ring_pos_from_pos.append([x,y])
+
+    result["pos_from_pos"] = pos_from_pos
+    result["ring_pos_from_pos"] = ring_pos_from_pos
+    result["pos_from_pos2"] = pos_from_pos2
+    result["ring_pos_from_pos2"] = ring_pos_from_pos2
+    return result
+
+
+def print_data(d):
+    for i, r in enumerate(d):
+        payload = r.payload
+        if r.type in (EntryType.IPTS_DFT_ID_POSITION, EntryType.IPTS_DFT_ID_POSITION2):
+            print(r.type)
+            print("Rows: ")
+            for r in range(payload.rows):
+                print(f"x[{r}]", payload.x[r])
+            print()
+            for r in range(payload.rows):
+                print(f"y[{r}]", payload.y[r])
+
 
 if __name__ == "__main__":
     # Metadata(size=MetataSize(rows=46, columns=68, width=27389, height=18259), transform=MetataTransform(xx=408.791, yx=0, tx=0, xy=0, yy=405.756, ty=0))
@@ -279,42 +331,7 @@ if __name__ == "__main__":
     config = Config()
 
 
-    pos = []
-    pos1 = []
-
-    positions = []
-    for r in d:
-        if r.type == EntryType.IPTS_DFT_ID_POSITION:
-            positions.append(r.payload)
-
-    for i, r in enumerate(d):
-        if scenario.max_index is not None and i > scenario.max_index:
-            break
-        if r.type == EntryType.IPTS_DFT_ID_POSITION2:
-            payload = r.payload
-            print("\n\n\n")
-            # print("x")
-            x = interpolate(payload.x[0], config)
-            # print("y")
-            y = interpolate(payload.y[0], config)
-            pos.append([x,y])
-            print("Pos", x,y)
-
-            x = interpolate(payload.x[1], config)
-            y = interpolate(payload.y[1], config)
-            pos1.append([x,y])
-            print("Tip", x,y)
-
-            print("Rows: ")
-            for r in range(payload.rows):
-                print(f"x[{r}]", payload.x[r])
-            print()
-            for r in range(payload.rows):
-                print(f"y[{r}]", payload.y[r])
-
-
-
-    show_trajectory(pos, pos1)
-
+    res = process_data(d, interpolate)
+    show_trajectory(res)
 
 
