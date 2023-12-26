@@ -217,47 +217,22 @@ def show_plots(trajectories={}, scatter={}):
 
 
 def changed_interpolate(row, config):
-    import math
-    maxi = int(IPTS_DFT_NUM_COMPONENTS / 2)
-    mind = -0.5
-    maxd = 0.5
+    
+    
+    v = sum(np.sqrt(square_iq(row)))
+    if v < 100:
+        return float("nan")
+    x1_fit, x1_data, coeff = make_poly(row, 3)
+    # results["x1_fit"] = x1_fit
+    # results["x1_data"] = x1_data
 
-    iq_mag = [math.hypot(I, Q) for I, Q in row.iq]
-    # print(iq_mag)
-    ibest = 0
-    vbest = -1000000
-    for i, v in enumerate(iq_mag):
-        if vbest < v:
-            ibest = i 
-            vbest = v
+    # results["x1_fit"] = make_poly(pos_payload.x[1], 3)
 
-    maxi = ibest
-    # // get phase-aligned amplitudes of the three center components
-    amp = float(math.hypot(row.iq[maxi][REAL], row.iq[maxi][IMAG]))
-
-
-    if amp < config.dft_position_min_amp:
-        return float("NaN")
-
-
-    f64_sin = float(row.iq[maxi][REAL] / amp)
-    f64_cos = float(row.iq[maxi][IMAG] / amp)
-
-
-    x = [
-        f64_sin * row.iq[maxi - 1][REAL] + f64_cos * row.iq[maxi - 1][IMAG],
-        amp,
-        f64_sin * row.iq[maxi + 1][REAL] + f64_cos * row.iq[maxi + 1][IMAG],
-    ]
-
-    # print(x)
-
-    # if (x[0] + x[2] <= (2.0 * x[1])):
-        # print("bail")
-        # return float("NaN")
-
-    f64_d = float(x[0] - x[2]) / (2.0 * (x[0] - 2.0 * x[1] + x[2]))
-    return row.first + maxi + clamp(f64_d, mind, maxd)
+    
+    
+    peak = find_peak(coeff)
+    peak[0] += row.first
+    return peak[0]
     
 
 def slanted_incontact_tip_loss_tip_y_row():
@@ -281,15 +256,6 @@ def slanted_incontact_tip_loss_tip_y_row():
 
 
 Scenario = namedtuple("Scenario", ["filename", "max_index", "interp"])
-
-test_scenarios = {
-    "slanted_incontact_tip_loss_orig":Scenario("./slanted_incontact.json.gz", max_index=73, interp=cpp_interpolate_pos),
-    "slanted_incontact_tip_loss_orig_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
-    "slanted_incontact_tip_loss_new":Scenario("./slanted_incontact.json.gz", max_index=73, interp=changed_interpolate),
-    "slanted_incontact_tip_loss_new_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=changed_interpolate),
-    "spiral_out_loss_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
-    "spiral_out_loss_new_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=changed_interpolate),
-}
 
 def process_data(d, interpolate_fun):
     result = {}
@@ -328,6 +294,56 @@ def process_data(d, interpolate_fun):
     return result
 
 
+import numpy as np
+
+def row_plottable(r, index, s=1.0):
+    return [(r.first + i, r.iq[i][index] * s) for i in range(9)]
+def square_iq(r):
+    return [r.iq[i][0] * r.iq[i][0] + r.iq[i][1] * r.iq[i][1] for i in range(9)]
+
+# Do everything in the window frame.
+# https://en.wikipedia.org/wiki/Polynomial_regression#Matrix_form_and_calculation_of_estimates
+# Perform a weighted least squares fit using the vandermonde matrix.
+def fit(data, order, weights):
+    idx = list(range(len(data)))
+    m = np.vander(idx, order) # https://numpy.org/doc/stable/reference/generated/numpy.vander.html
+    y = data
+
+    if weights:
+        m = np.diag(weights).dot(m)
+        y = np.diag(weights).dot(y)
+
+    pinv = np.linalg.pinv(m)
+    # Perform Moore-Penrose pseudoinverse
+    betas = pinv.dot(np.array(y))
+    return betas
+
+def make_poly(row, order):
+
+    v = np.sqrt(square_iq(row))
+
+    maxv = max(v)
+    weights = [z / maxv for z in v]
+    # weights = [0, 0, 0,   1, 1, 1,  0, 0, 0]
+
+    b = fit(v, order, weights)
+
+    x_nice = [i / 10.0 for i in range(9 * 10)]
+    res = np.polyval(b, x_nice)
+    # print(res)
+    return list(zip([z+ row.first for z in x_nice], [z for z in res])), list(zip([z+ row.first for z in range(9)], v)), b
+
+def find_peak(coeff):
+    # standard cubic function, take derivative, find root of that
+    # then plug that back in.
+    assert len(coeff) == 3
+    # f(x) = ax*x + bx + c
+    # f'(x) = 2ax + b
+    # 0 = 2ax + b
+    # x = -b / 2a
+    x_peak = -coeff[1] / (2.0 * coeff[0])
+    return [x_peak, np.polyval(coeff, x_peak)]
+
 def do_things_on_frame(frame, interpolate_fun):
 
     pos_payload = frame[EntryType.IPTS_DFT_ID_POSITION2]
@@ -336,11 +352,6 @@ def do_things_on_frame(frame, interpolate_fun):
 
     x = interpolate(pos_payload.x[0], config)
     y = interpolate(pos_payload.y[0], config)
-
-    def row_plottable(r, index, s=1.0):
-        return [(r.first + i, r.iq[i][index] * s) for i in range(9)]
-    def square_iq(r):
-        return [r.iq[i][0] * r.iq[i][0] + r.iq[i][1] * r.iq[i][1] for i in range(9)]
 
     # make IQs into plottables.
 
@@ -353,50 +364,6 @@ def do_things_on_frame(frame, interpolate_fun):
         # "x1_I": row_plottable(pos_payload.x[1], I),
         # "x1_Q": row_plottable(pos_payload.x[1], Q),
     }
-
-    import numpy as np
-    # Do everything in the window frame.
-    # https://en.wikipedia.org/wiki/Polynomial_regression#Matrix_form_and_calculation_of_estimates
-    # Perform a weighted least squares fit using the vandermonde matrix.
-    def fit(data, order, weights):
-        idx = list(range(len(data)))
-        m = np.vander(idx, order) # https://numpy.org/doc/stable/reference/generated/numpy.vander.html
-        y = data
-
-        if weights:
-            m = np.diag(weights).dot(m)
-            y = np.diag(weights).dot(y)
-
-        pinv = np.linalg.pinv(m)
-        # Perform Moore-Penrose pseudoinverse
-        betas = pinv.dot(np.array(y))
-        return betas
-
-    def make_poly(row, order):
-
-        v = np.sqrt(square_iq(row))
-
-        maxv = max(v)
-        weights = [z / maxv for z in v]
-        # weights = [0, 0, 0,   1, 1, 1,  0, 0, 0]
-
-        b = fit(v, order, weights)
-
-        x_nice = [i / 10.0 for i in range(9 * 10)]
-        res = np.polyval(b, x_nice)
-        # print(res)
-        return list(zip([z+ row.first for z in x_nice], [z for z in res])), list(zip([z+ row.first for z in range(9)], v)), b
-
-    def find_peak(coeff):
-        # standard cubic function, take derivative, find root of that
-        # then plug that back in.
-        assert len(coeff) == 3
-        # f(x) = ax*x + bx + c
-        # f'(x) = 2ax + b
-        # 0 = 2ax + b
-        # x = -b / 2a
-        x_peak = -coeff[1] / (2.0 * coeff[0])
-        return [x_peak, np.polyval(coeff, x_peak)]
 
     
     x0_fit, x0_data, coeff = make_poly(pos_payload.x[0], 3)
@@ -443,6 +410,17 @@ def make_frames(d):
             frame = {}
     return frames
 
+
+test_scenarios = {
+    "slanted_incontact_tip_loss_orig":Scenario("./slanted_incontact.json.gz", max_index=73, interp=cpp_interpolate_pos),
+    "slanted_incontact_tip_loss_orig_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
+    "slanted_incontact_tip_loss_new":Scenario("./slanted_incontact.json.gz", max_index=73, interp=changed_interpolate),
+    "slanted_incontact_tip_loss_new_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=changed_interpolate),
+    "spiral_out_loss_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
+    "spiral_out_loss_new_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=changed_interpolate),
+}
+
+
 if __name__ == "__main__":
     # Metadata(size=MetataSize(rows=46, columns=68, width=27389, height=18259), transform=MetataTransform(xx=408.791, yx=0, tx=0, xy=0, yy=405.756, ty=0))
     default_interpolate = cpp_interpolate_pos
@@ -455,19 +433,25 @@ if __name__ == "__main__":
     print(metadata)
     config = Config()
 
-    # res = process_data(d, interpolate)
-    # print_data(d)
-    # show_trajectory(res)
-
-    frames = make_frames(d)
+    do_full = False
+    do_on_frame = False
 
 
-    print("Frames: ", len(frames))
-    f = frames[200]
+    do_full = True
+    if do_full:
+        res = process_data(d, interpolate)
+        print_data(d)
+        show_trajectory(res)
 
-    res = do_things_on_frame(f, interpolate)
-    # res = process_data(d, interpolate)
-    # print_data(d)
-    # show_trajectory(res)
+    # frames = make_frames(d)
+
+
+    # do_on_frame = True
+
+    if do_on_frame:
+        print("Frames: ", len(frames))
+        f = frames[200]
+
+        res = do_things_on_frame(f, interpolate)
 
 
