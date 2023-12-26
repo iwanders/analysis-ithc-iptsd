@@ -189,6 +189,8 @@ def show_trajectory(trajectories={}):
         y = [v[1] for v in t]
         if n.endswith(":"):
             plt.plot(x, y, ":", label=n)
+        elif n.endswith("*"):
+            plt.plot(x, y, "*", label=n)
         else:
             plt.plot(x, y, label=n)
         
@@ -202,7 +204,7 @@ def show_trajectory(trajectories={}):
 
 def show_plots(trajectories={}, scatter={}):
     import matplotlib.pyplot as plt
-    print(trajectories)
+    # print(trajectories)
     for n,t in trajectories.items():
         x = [v[0] for v in t]
         y = [v[1] for v in t]
@@ -297,6 +299,14 @@ def process_data(d, interpolate):
     result["ring_pos_from_pos2"] = ring_pos_from_pos2
     return result
 
+def process_single_frame(frame, interpolate):
+    # Unpack the frame... :/
+    entries = []
+    for n, v in frame.items():
+        r = Record(n, v)
+        entries.append(r)
+
+    return process_data(entries, interpolate)
 
 import numpy as np
 
@@ -313,7 +323,7 @@ def fit(data, order, weights):
     m = np.vander(idx, order) # https://numpy.org/doc/stable/reference/generated/numpy.vander.html
     y = data
 
-    if weights:
+    if weights is not None:
         m = np.diag(weights).dot(m)
         y = np.diag(weights).dot(y)
 
@@ -328,7 +338,15 @@ def make_poly(row, order):
 
     maxv = max(v)
     weights = [z / maxv for z in v]
-    # weights = [0, 0, 0,   1, 1, 1,  0, 0, 0]
+    # print("weights", weights)
+    
+    def gaussian(x, amplitude, mean, stddev):
+        return amplitude * np.exp(-((np.array(x) - mean) / 4 / stddev)**2)
+
+    # weights = [0, 0.3, 0.5,   1, 1, 1,  0.5, 0.3, 0]
+    weights = list(gaussian(list(range(9)), 1.0, 4, 0.7)) # ring
+    # weights = [0, 0.0, 0.5,   1, 1, 1,  0.5, 0.0, 0] # tip
+    # print(weights)
 
     b = fit(v, order, weights)
 
@@ -350,8 +368,8 @@ def find_peak(coeff):
 
 def do_things_on_frame(frame, interpolate_fun):
 
-    pos_payload = frame[EntryType.IPTS_DFT_ID_POSITION2]
-    print(pos_payload)
+    pos_payload = frame[EntryType.IPTS_DFT_ID_POSITION]
+    # print(pos_payload)
 
 
     x = interpolate(pos_payload.x[0], config)
@@ -368,15 +386,20 @@ def do_things_on_frame(frame, interpolate_fun):
         # "x1_I": row_plottable(pos_payload.x[1], I),
         # "x1_Q": row_plottable(pos_payload.x[1], Q),
     }
-
     
+
+    print("Interestting here")
     x0_fit, x0_data, coeff = make_poly(pos_payload.x[0], 3)
     results["x0_fit"] = x0_fit
     results["x0_data"] = x0_data
 
-    x1_fit, x1_data, coeff2 = make_poly(pos_payload.x[1], 3)
-    results["x1_fit"] = x1_fit
-    results["x1_data"] = x1_data
+
+    # print("x0_data: ", x0_data)
+
+
+    # x1_fit, x1_data, coeff2 = make_poly(pos_payload.x[1], 3)
+    # results["x1_fit"] = x1_fit
+    # results["x1_data"] = x1_data
 
     # results["x1_fit"] = make_poly(pos_payload.x[1], 3)
 
@@ -449,6 +472,9 @@ if __name__ == "__main__":
     d = load(scenario.filename)
     interpolate = scenario.interp
 
+
+    frames = make_frames(d)
+
     metadata = get_metadata(d)
     print(metadata)
     config = Config()
@@ -458,32 +484,33 @@ if __name__ == "__main__":
     do_comparison = False
 
 
-    # do_full = True
+    do_full = True
     if do_full:
         res = process_data(d, interpolate)
-        print_data(d)
+        # print_data(d)
+        s = process_single_frame(frames[174], interpolate)
+        res["OURMARKER*"] = s["pos_from_pos"]
         show_trajectory(res)
 
 
-    do_comparison = True
+    # do_comparison = True
     if do_comparison:
         keys = [
-            # "pos_from_pos",
-            "ring_pos_from_pos",
-            # "pos_from_pos2",
+            "pos_from_pos",
+            # "ring_pos_from_pos",
+            "pos_from_pos2",
             # "ring_pos_from_pos2",
         ]
         compare_scenario(d, cpp_interpolate_pos, changed_interpolate, keys)
 
 
-    # frames = make_frames(d)
 
 
     # do_on_frame = True
-
     if do_on_frame:
-        print("Frames: ", len(frames))
-        f = frames[200]
+        # print("Frames: ", len(frames))
+        f = frames[174]
+        # print(f)
 
         res = do_things_on_frame(f, interpolate)
 
