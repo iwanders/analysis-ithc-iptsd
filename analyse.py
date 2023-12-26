@@ -197,7 +197,7 @@ def show_trajectory(trajectories={}):
     plt.show()
 
 
-def show_plots(trajectories={}):
+def show_plots(trajectories={}, scatter={}):
     import matplotlib.pyplot as plt
     print(trajectories)
     for n,t in trajectories.items():
@@ -206,6 +206,10 @@ def show_plots(trajectories={}):
         print(x)
         linewidth = 1.0
         plt.plot(x, y, label=n, linewidth=linewidth)
+
+    for n,t in scatter.items():
+        plt.plot(t[0], t[1], "*", label=n)
+
 
     plt.legend(loc="upper right")
     ax = plt.gca()
@@ -335,6 +339,8 @@ def do_things_on_frame(frame, interpolate_fun):
 
     def row_plottable(r, index, s=1.0):
         return [(r.first + i, r.iq[i][index] * s) for i in range(9)]
+    def square_iq(r):
+        return [r.iq[i][0] * r.iq[i][0] + r.iq[i][1] * r.iq[i][1] for i in range(9)]
 
     # make IQs into plottables.
 
@@ -342,14 +348,77 @@ def do_things_on_frame(frame, interpolate_fun):
     Q = 1
 
     results = {
-        "x0_I": row_plottable(pos_payload.x[0], I),
-        "x0_Q": row_plottable(pos_payload.x[0], Q),
-        "x1_I": row_plottable(pos_payload.x[1], I),
-        "x1_Q": row_plottable(pos_payload.x[1], Q),
+        # "x0_I": row_plottable(pos_payload.x[0], I),
+        # "x0_Q": row_plottable(pos_payload.x[0], Q),
+        # "x1_I": row_plottable(pos_payload.x[1], I),
+        # "x1_Q": row_plottable(pos_payload.x[1], Q),
     }
 
-    show_plots(results)
-    # show_plots(results)
+    import numpy as np
+    # Do everything in the window frame.
+    # https://en.wikipedia.org/wiki/Polynomial_regression#Matrix_form_and_calculation_of_estimates
+    # Perform a weighted least squares fit using the vandermonde matrix.
+    def fit(data, order, weights):
+        idx = list(range(len(data)))
+        m = np.vander(idx, order) # https://numpy.org/doc/stable/reference/generated/numpy.vander.html
+        y = data
+
+        if weights:
+            m = np.diag(weights).dot(m)
+            y = np.diag(weights).dot(y)
+
+        pinv = np.linalg.pinv(m)
+        # Perform Moore-Penrose pseudoinverse
+        betas = pinv.dot(np.array(y))
+        return betas
+
+    def make_poly(row, order):
+
+        v = np.sqrt(square_iq(row))
+
+        maxv = max(v)
+        weights = [z / maxv for z in v]
+        # weights = [0, 0, 0,   1, 1, 1,  0, 0, 0]
+
+        b = fit(v, order, weights)
+
+        x_nice = [i / 10.0 for i in range(9 * 10)]
+        res = np.polyval(b, x_nice)
+        # print(res)
+        return list(zip([z+ row.first for z in x_nice], [z for z in res])), list(zip([z+ row.first for z in range(9)], v)), b
+
+    def find_peak(coeff):
+        # standard cubic function, take derivative, find root of that
+        # then plug that back in.
+        assert len(coeff) == 3
+        # f(x) = ax*x + bx + c
+        # f'(x) = 2ax + b
+        # 0 = 2ax + b
+        # x = -b / 2a
+        x_peak = -coeff[1] / (2.0 * coeff[0])
+        return [x_peak, np.polyval(coeff, x_peak)]
+
+    
+    x0_fit, x0_data, coeff = make_poly(pos_payload.x[0], 3)
+    results["x0_fit"] = x0_fit
+    results["x0_data"] = x0_data
+
+    x1_fit, x1_data, coeff2 = make_poly(pos_payload.x[1], 3)
+    results["x1_fit"] = x1_fit
+    results["x1_data"] = x1_data
+
+    # results["x1_fit"] = make_poly(pos_payload.x[1], 3)
+
+    
+    
+    peak = find_peak(coeff)
+    peak[0] += pos_payload.x[0].first
+    scatter = {
+        "peak": peak
+    }
+    show_plots(results, scatter)
+
+
 
 def print_data(d):
     for i, r in enumerate(d):
