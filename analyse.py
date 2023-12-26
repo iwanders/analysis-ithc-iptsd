@@ -187,7 +187,10 @@ def show_trajectory(trajectories={}):
     for n,t in trajectories.items():
         x = [v[0] for v in t]
         y = [v[1] for v in t]
-        plt.plot(x, y, label=n)
+        if n.endswith(":"):
+            plt.plot(x, y, ":", label=n)
+        else:
+            plt.plot(x, y, label=n)
         
     plt.xlim([0, 68])
     plt.ylim([0, 44])
@@ -222,6 +225,7 @@ def changed_interpolate(row, config):
     v = sum(np.sqrt(square_iq(row)))
     if v < 100:
         return float("nan")
+
     x1_fit, x1_data, coeff = make_poly(row, 3)
     # results["x1_fit"] = x1_fit
     # results["x1_data"] = x1_data
@@ -257,7 +261,7 @@ def slanted_incontact_tip_loss_tip_y_row():
 
 Scenario = namedtuple("Scenario", ["filename", "max_index", "interp"])
 
-def process_data(d, interpolate_fun):
+def process_data(d, interpolate):
     result = {}
     
     pos_from_pos = []
@@ -417,8 +421,24 @@ test_scenarios = {
     "slanted_incontact_tip_loss_new":Scenario("./slanted_incontact.json.gz", max_index=73, interp=changed_interpolate),
     "slanted_incontact_tip_loss_new_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=changed_interpolate),
     "spiral_out_loss_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
-    "spiral_out_loss_new_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=changed_interpolate),
+    "spiral_out_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
+    "spiral_out_new_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=changed_interpolate),
 }
+
+def compare_scenario(data, interp_1, interp_2, keys):
+    res1 = process_data(data, interp_1)
+    res2 = process_data(data, interp_2)
+    print(res1.keys())
+
+    res = {}
+    for k in keys:
+        res[k + "_" + interp_1.__name__] = res1[k]
+        res[k + "_" + interp_2.__name__] = res2[k]
+        # for v1, v2 in zip(res1[k], res2[k]):
+            # print(v1, v2)
+
+    show_trajectory(res)
+    
 
 
 if __name__ == "__main__":
@@ -435,13 +455,26 @@ if __name__ == "__main__":
 
     do_full = False
     do_on_frame = False
+    do_comparison = False
 
 
-    do_full = True
+    # do_full = True
     if do_full:
         res = process_data(d, interpolate)
         print_data(d)
         show_trajectory(res)
+
+
+    do_comparison = True
+    if do_comparison:
+        keys = [
+            # "pos_from_pos",
+            "ring_pos_from_pos",
+            # "pos_from_pos2",
+            # "ring_pos_from_pos2",
+        ]
+        compare_scenario(d, cpp_interpolate_pos, changed_interpolate, keys)
+
 
     # frames = make_frames(d)
 
