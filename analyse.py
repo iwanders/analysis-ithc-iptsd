@@ -452,6 +452,8 @@ def process_frames(frames, interpolate):
             continue
         pos = frame[EntryType.IPTS_DFT_ID_POSITION]
         pos2 = frame[EntryType.IPTS_DFT_ID_POSITION2]
+        pres = frame[EntryType.IPTS_DFT_ID_PRESSURE]
+        but = frame[EntryType.IPTS_DFT_ID_BUTTON]
 
         def coord_interp(row, index):
             x = interpolate(row.x[index], config)
@@ -461,10 +463,18 @@ def process_frames(frames, interpolate):
 
         append("pos_[0]", coord_interp(pos, 0))
         append("pos_[1]", coord_interp(pos, 1))
+        # append("pos_[4]", coord_interp(pos, 4))
+
+
         append("pos2_[0]", coord_interp(pos2, 0))
         append("pos2_[1]", coord_interp(pos2, 1))
         append("pos2_[3]", coord_interp(pos2, 3))
         append("pos2_[5]", coord_interp(pos2, 5))
+
+        append("but_[3]", coord_interp(but, 3))
+
+        # append("pres_[2]", coord_interp(pres, 2))
+        # append("pres_[3]", coord_interp(pres, 3))
 
     return result
 
@@ -550,13 +560,13 @@ if __name__ == "__main__":
         show_trajectory(res)
 
 
-    # do_comparison = True
+    do_comparison = True
     if do_comparison:
         keys = [
             "pos_from_pos",
-            # "ring_pos_from_pos",
+            "ring_pos_from_pos",
             "pos_from_pos2",
-            # "ring_pos_from_pos2",
+            "ring_pos_from_pos2",
         ]
         compare_scenario(d, cpp_interpolate_pos, changed_interpolate, keys)
 
