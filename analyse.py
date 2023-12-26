@@ -15,6 +15,8 @@ class EntryType(Enum):
     IPTS_DFT_ID_BUTTON   = 9
     IPTS_DFT_ID_PRESSURE = 11
     METADATA = 999
+    def __lt__(self, o):
+        self._value_ < o._value_
 
 
 
@@ -208,7 +210,7 @@ def show_plots(trajectories={}, scatter={}):
     for n,t in trajectories.items():
         x = [v[0] for v in t]
         y = [v[1] for v in t]
-        print(x)
+        # print(x)
         linewidth = 1.0
         plt.plot(x, y, label=n, linewidth=linewidth)
 
@@ -366,9 +368,26 @@ def find_peak(coeff):
     x_peak = -coeff[1] / (2.0 * coeff[0])
     return [x_peak, np.polyval(coeff, x_peak)]
 
+def print_dft_rows(dft_data):
+    for i in range(dft_data.rows):
+        print(f"x[{i}]", dft_data.x[i])
+    for i in range(dft_data.rows):
+        print(f"y[{i}]", dft_data.y[i])
+    
+
 def do_things_on_frame(frame, interpolate_fun):
 
+    print_things = False
+
+    print_things = True
+    if print_things:
+        for k, v in sorted(frame.items()):
+            print(k)
+            print_dft_rows(v)
+
+    # [[-2, -6], [-3, -5], [-2, 1], [28, 61], [327, 707], [30, 64], [4, 8], [1, 3], [0, 1]]
     pos_payload = frame[EntryType.IPTS_DFT_ID_POSITION]
+    pos2_payload = frame[EntryType.IPTS_DFT_ID_POSITION2]
     # print(pos_payload)
 
 
@@ -397,9 +416,17 @@ def do_things_on_frame(frame, interpolate_fun):
     # print("x0_data: ", x0_data)
 
 
-    # x1_fit, x1_data, coeff2 = make_poly(pos_payload.x[1], 3)
-    # results["x1_fit"] = x1_fit
-    # results["x1_data"] = x1_data
+    x1_fit, x1_data, coeff2 = make_poly(pos_payload.x[1], 3)
+    results["x1_fit"] = x1_fit
+    results["x1_data"] = x1_data
+
+    x3_fit, x3_data, coeff2 = make_poly(pos2_payload.x[3], 3)
+    results["x3_fit"] = x3_fit
+    results["x3_data"] = x3_data
+
+    x5_fit, x5_data, coeff2 = make_poly(pos2_payload.x[5], 3)
+    results["x5_fit"] = x5_fit
+    results["x5_data"] = x5_data
 
     # results["x1_fit"] = make_poly(pos_payload.x[1], 3)
 
@@ -411,6 +438,35 @@ def do_things_on_frame(frame, interpolate_fun):
         "peak": peak
     }
     show_plots(results, scatter)
+
+
+def process_frames(frames, interpolate):
+    result = {}
+    def append(name, entry):
+        if not name in result:
+            result[name] = []
+        result[name].append(entry)
+
+    for frame in frames:
+        if len(frame.items()) < 4:
+            continue
+        pos = frame[EntryType.IPTS_DFT_ID_POSITION]
+        pos2 = frame[EntryType.IPTS_DFT_ID_POSITION2]
+
+        def coord_interp(row, index):
+            x = interpolate(row.x[index], config)
+            y = interpolate(row.y[index], config)
+            return [x,y]
+
+
+        append("pos_[0]", coord_interp(pos, 0))
+        append("pos_[1]", coord_interp(pos, 1))
+        append("pos2_[0]", coord_interp(pos2, 0))
+        append("pos2_[1]", coord_interp(pos2, 1))
+        append("pos2_[3]", coord_interp(pos2, 3))
+        append("pos2_[5]", coord_interp(pos2, 5))
+
+    return result
 
 
 
@@ -480,15 +536,16 @@ if __name__ == "__main__":
     config = Config()
 
     do_full = False
+    do_full_frames = False
     do_on_frame = False
     do_comparison = False
 
 
-    do_full = True
+    # do_full = True
     if do_full:
         res = process_data(d, interpolate)
         # print_data(d)
-        s = process_single_frame(frames[174], interpolate)
+        s = process_single_frame(frames[190], interpolate)
         res["OURMARKER*"] = s["pos_from_pos"]
         show_trajectory(res)
 
@@ -509,9 +566,18 @@ if __name__ == "__main__":
     # do_on_frame = True
     if do_on_frame:
         # print("Frames: ", len(frames))
-        f = frames[174]
+        f = frames[190]
         # print(f)
 
         res = do_things_on_frame(f, interpolate)
+
+    do_full_frames = True
+    if do_full_frames:
+        res = process_frames(frames, interpolate)
+        # print_data(d)
+        # s = process_single_frame(frames[190], interpolate)
+        # res["OURMARKER*"] = s["pos_from_pos"]
+        show_trajectory(res)
+        
 
 
