@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+#[1]: http://www.ericjacobsen.org/fe2/fe2.htm & http://www.ericjacobsen.org/FTinterp.pdf
+
 import sys
 import json
 from collections import namedtuple
@@ -130,6 +132,7 @@ def cpp_interpolate_pos(row, config):
 
     # // find critical point of fitted parabola
     # const f64 d = (x[0] - x[2]) / (2 * (x[0] - 2 * x[1] + x[2]));
+    # Sort of like quadterp from [1]?
     f64_d = float(x[0] - x[2]) / (2.0 * (x[0] - 2.0 * x[1] + x[2]))
     # print(f"f64_d: {f64_d}")
     # print(f"row.first: {row.first}")
