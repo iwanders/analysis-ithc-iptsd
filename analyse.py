@@ -2,6 +2,9 @@
 
 #[1]: http://www.ericjacobsen.org/fe2/fe2.htm & http://www.ericjacobsen.org/FTinterp.pdf
 
+# This could be relevant as well;
+#https://ccrma.stanford.edu/~jos/sasp/Quadratic_Interpolation_Spectral_Peaks.html
+
 import sys
 import json
 from collections import namedtuple
