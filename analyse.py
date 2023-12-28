@@ -6,6 +6,7 @@ from collections import namedtuple
 from enum import Enum
 
 IPTS_DFT_NUM_COMPONENTS = 9
+IPTS_DFT_PRESSURE_ROWS  = 6
 REAL = 0
 IMAG = 1
 
@@ -34,6 +35,7 @@ class Config:
         self.dft_position_min_amp = 50
         self.dft_position_min_mag = 2000
         self.dft_position_exp = -0.7
+        self.dft_freq_min_mag = 10000
 
 def load(p):
     import gzip
@@ -133,6 +135,53 @@ def cpp_interpolate_pos(row, config):
     # print(f"row.first: {row.first}")
 
     return row.first + maxi + clamp(f64_d, mind, maxd)
+
+
+def cpp_interpolate_frequency(window, config):
+    rows = IPTS_DFT_PRESSURE_ROWS
+
+    if rows < 3:
+        return float("NaN")
+
+    maxi = 0
+    maxm = 0
+    for i in range(rows):
+        m = window.x[i].mag + window.y[i].mag 
+        if m > maxm:
+            maxm = m
+            maxi = i
+
+    if maxm < 2.0 * config.dft_freq_min_mag:
+        return float("NaN")
+
+    mind = -0.5
+    maxd = 0.5
+
+    if maxi < 1:
+        maxi = 1
+        mind = -1
+    elif maxi > rows - 2:
+        maxi = rows - 2
+        maxd = 1
+
+    real = [0, 0, 0]
+    imag = [0, 0, 0]
+
+    for i in range(3):
+        for j in range(IPTS_DFT_NUM_COMPONENTS):
+            rowx = window.x[maxi + i - 1]
+            rowy = window.y[maxi + i - 1]
+            real[i] += rowx.iq[j][REAL] + rowx.iq[j][REAL]
+            imag[i] += rowx.iq[j][IMAG] + rowx.iq[j][IMAG]
+
+    ra = real[0] - real[2]
+    rb = 2 * real[1] - real[0] - real[2]
+    ia = imag[0] - imag[2]
+    ib = 2 * imag[1] - imag[0] - imag[2]
+
+    d = (ra * rb + ia * ib) / (rb * rb + ib * ib)
+    return (maxi + clamp(d, mind, maxd)) / (rows - 1)
+
 
 def test_pos():
     iq = [(    -8,    -3),(    -6,    -3),(     3,     2),(   202,   103),(   260,   133),(    -3,     1),(   -15,    -7),(   -13,    -6),(   -10,    -7),]
@@ -339,7 +388,7 @@ def make_poly(row, order):
     v = np.sqrt(square_iq(row))
 
     maxv = max(v)
-    weights = [z / maxv for z in v]
+    # weights = [z / maxv for z in v]
     # print("weights", weights)
     
     def gaussian(x, amplitude, mean, stddev):
@@ -385,11 +434,16 @@ def do_things_on_frame(frame, interpolate_fun):
             print(k)
             print_dft_rows(v)
 
+
+
     # [[-2, -6], [-3, -5], [-2, 1], [28, 61], [327, 707], [30, 64], [4, 8], [1, 3], [0, 1]]
     pos_payload = frame[EntryType.IPTS_DFT_ID_POSITION]
     pos2_payload = frame[EntryType.IPTS_DFT_ID_POSITION2]
+    pressure_payload = frame[EntryType.IPTS_DFT_ID_PRESSURE]
     # print(pos_payload)
 
+    freq = cpp_interpolate_frequency(pressure_payload, config)
+    print(freq)
 
     x = interpolate(pos_payload.x[0], config)
     y = interpolate(pos_payload.y[0], config)
@@ -560,7 +614,7 @@ if __name__ == "__main__":
         show_trajectory(res)
 
 
-    do_comparison = True
+    # do_comparison = True
     if do_comparison:
         keys = [
             "pos_from_pos",
@@ -573,7 +627,7 @@ if __name__ == "__main__":
 
 
 
-    # do_on_frame = True
+    do_on_frame = True
     if do_on_frame:
         # print("Frames: ", len(frames))
         f = frames[190]
@@ -581,7 +635,7 @@ if __name__ == "__main__":
 
         res = do_things_on_frame(f, interpolate)
 
-    do_full_frames = True
+    # do_full_frames = True
     if do_full_frames:
         res = process_frames(frames, interpolate)
         # print_data(d)
