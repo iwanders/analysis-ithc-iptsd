@@ -167,6 +167,10 @@ def cpp_interpolate_frequency(window, config):
     real = [0, 0, 0]
     imag = [0, 0, 0]
 
+    # /*
+    # * all components in a row have the same phase, and corresponding x and y rows also
+    # * have the same phase, so we can add everything together
+    # */
     for i in range(3):
         for j in range(IPTS_DFT_NUM_COMPONENTS):
             rowx = window.x[maxi + i - 1]
@@ -174,6 +178,7 @@ def cpp_interpolate_frequency(window, config):
             real[i] += rowx.iq[j][REAL] + rowx.iq[j][REAL]
             imag[i] += rowx.iq[j][IMAG] + rowx.iq[j][IMAG]
 
+    # // interpolate using Eric Jacobsen's modified quadratic estimator
     ra = real[0] - real[2]
     rb = 2 * real[1] - real[0] - real[2]
     ia = imag[0] - imag[2]
