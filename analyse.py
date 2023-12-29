@@ -406,9 +406,11 @@ def make_poly(row, order):
         return amplitude * np.exp(-((np.array(x) - mean) / 4 / stddev)**2)
 
     # weights = [0, 0.3, 0.5,   1, 1, 1,  0.5, 0.3, 0]
-    weights = list(gaussian(list(range(9)), 1.0, 4, 0.7)) # ring
+    # weights = list(gaussian(list(range(9)), 1.0, 4, 0.7)) # ring
+    weights = np.hanning(9)
+    
     # weights = [0, 0.0, 0.5,   1, 1, 1,  0.5, 0.0, 0] # tip
-    # print(weights)
+    print(weights)
 
     b = fit(v, order, weights)
 
