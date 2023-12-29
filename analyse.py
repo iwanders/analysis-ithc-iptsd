@@ -410,7 +410,7 @@ def make_poly(row, order):
     weights = np.hanning(9)
     
     # weights = [0, 0.0, 0.5,   1, 1, 1,  0.5, 0.0, 0] # tip
-    print(weights)
+    # print(weights)
 
     b = fit(v, order, weights)
 
@@ -497,14 +497,30 @@ def do_things_on_frame(frame, interpolate_fun):
 
     # results["x1_fit"] = make_poly(pos_payload.x[1], 3)
 
-    
-    
     peak = find_peak(coeff)
     peak[0] += pos_payload.x[0].first
     scatter = {
         "peak": peak
     }
-    show_plots(results, scatter)
+
+
+
+    # Try the 'improve peak by ifft, zero pad, fft...'
+    # do the fft shift to move center to [0]
+    lshift = np.fft.ifftshift(pos_payload.x[0].iq)
+    # Take the ifft
+    data = np.fft.ifft(lshift)
+    # print(data)
+    # Now zero pad the data.
+    # data.resize(data.size[0] * 2, data.size[1])
+    data = np.vstack((data, np.zeros(data.shape)))
+    # take the fft again
+    bigfft = np.fft.fft(data)
+    # print(bigfft)
+    centered = np.fft.fftshift(bigfft)
+    print(centered)
+
+    # show_plots(results, scatter)
 
 
 def process_frames(frames, interpolate):
