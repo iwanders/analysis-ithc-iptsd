@@ -5,6 +5,11 @@
 # This could be relevant as well;
 #https://ccrma.stanford.edu/~jos/sasp/Quadratic_Interpolation_Spectral_Peaks.html
 
+# Cpp version looks very much like the quadratic method from:
+# https://dspguru.com/dsp/howtos/how-to-interpolate-fft-peak/
+# https://www.dsprelated.com/showarticle/1043.php
+
+
 import sys
 import json
 from collections import namedtuple
