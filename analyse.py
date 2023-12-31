@@ -148,7 +148,7 @@ def cpp_interpolate_pos(row, config):
     return row.first + maxi + clamp(f64_d, mind, maxd)
 
 
-def cpp_interpolate_frequency(window, config):
+def cpp_interpolate_frequency(window, config, maxi_override=None):
     rows = IPTS_DFT_PRESSURE_ROWS
 
     if rows < 3:
@@ -156,12 +156,19 @@ def cpp_interpolate_frequency(window, config):
 
     maxi = 0
     maxm = 0
+    maxi_pairs = []
     for i in range(rows):
-        m = window.x[i].mag + window.y[i].mag 
+        m = window.x[i].mag + window.y[i].mag
+        maxi_pairs.append((m, i))
         if m > maxm:
             maxm = m
             maxi = i
 
+    if maxi_override is not None:
+        maxi_pairs = sorted(maxi_pairs)[::-1]
+        maxi = maxi_pairs[maxi_override][1]
+        # print(maxi)
+    
     if maxm < 2.0 * config.dft_freq_min_mag:
         return float("NaN")
 
@@ -195,7 +202,10 @@ def cpp_interpolate_frequency(window, config):
     ia = imag[0] - imag[2]
     ib = 2 * imag[1] - imag[0] - imag[2]
 
-    d = (ra * rb + ia * ib) / (rb * rb + ib * ib)
+    denom =  (rb * rb + ib * ib)
+    if denom == 0:
+        return float("nan")
+    d = (ra * rb + ia * ib) / denom
     return (maxi + clamp(d, mind, maxd)) / (rows - 1)
 
 
@@ -461,7 +471,10 @@ def do_things_on_frame(frame, interpolate_fun):
     # print(pos_payload)
 
     freq = cpp_interpolate_frequency(pressure_payload, config)
-    print(freq)
+    print(f"freq: {freq}")
+
+    f_pos2 = cpp_interpolate_frequency(pos2_payload, config, maxi_override=1)
+    print(f"f_pos2: {f_pos2}")
 
     x = interpolate(pos_payload.x[0], config)
     y = interpolate(pos_payload.y[0], config)
@@ -509,21 +522,21 @@ def do_things_on_frame(frame, interpolate_fun):
     }
 
 
-
-    # Try the 'improve peak by ifft, zero pad, fft...'
-    # do the fft shift to move center to [0]
-    lshift = np.fft.ifftshift(pos_payload.x[0].iq)
-    # Take the ifft
-    data = np.fft.ifft(lshift)
-    # print(data)
-    # Now zero pad the data.
-    # data.resize(data.size[0] * 2, data.size[1])
-    data = np.vstack((data, np.zeros(data.shape)))
-    # take the fft again
-    bigfft = np.fft.fft(data)
-    # print(bigfft)
-    centered = np.fft.fftshift(bigfft)
-    print(centered)
+    if False:
+        # Try the 'improve peak by ifft, zero pad, fft...'
+        # do the fft shift to move center to [0]
+        lshift = np.fft.ifftshift(pos_payload.x[0].iq)
+        # Take the ifft
+        data = np.fft.ifft(lshift)
+        # print(data)
+        # Now zero pad the data.
+        # data.resize(data.size[0] * 2, data.size[1])
+        data = np.vstack((data, np.zeros(data.shape)))
+        # take the fft again
+        bigfft = np.fft.fft(data)
+        # print(bigfft)
+        centered = np.fft.fftshift(bigfft)
+        print(centered)
 
     # show_plots(results, scatter)
 
@@ -535,7 +548,12 @@ def process_frames(frames, interpolate):
             result[name] = []
         result[name].append(entry)
 
-    for frame in frames:
+    total_frames = len(frames)
+    dx = 50.0 / total_frames
+    y_offset = 20.0
+    dy = 10.0
+
+    for i, frame in enumerate(frames):
         if len(frame.items()) < 4:
             continue
         pos = frame[EntryType.IPTS_DFT_ID_POSITION]
@@ -560,6 +578,10 @@ def process_frames(frames, interpolate):
         append("pos2_[5]", coord_interp(pos2, 5))
 
         append("but_[3]", coord_interp(but, 3))
+
+
+        f_pos2 = cpp_interpolate_frequency(but, config, maxi_override=0)
+        append("f_pos2", [i * dx, f_pos2 * dy + y_offset])
 
         # append("pres_[2]", coord_interp(pres, 2))
         # append("pres_[3]", coord_interp(pres, 3))
@@ -661,7 +683,7 @@ if __name__ == "__main__":
 
 
 
-    do_on_frame = True
+    # do_on_frame = True
     if do_on_frame:
         # print("Frames: ", len(frames))
         f = frames[190]
@@ -669,7 +691,7 @@ if __name__ == "__main__":
 
         res = do_things_on_frame(f, interpolate)
 
-    # do_full_frames = True
+    do_full_frames = True
     if do_full_frames:
         res = process_frames(frames, interpolate)
         # print_data(d)
