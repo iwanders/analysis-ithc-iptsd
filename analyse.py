@@ -209,54 +209,6 @@ def cpp_interpolate_frequency(window, config, maxi_override=None):
     return (maxi + clamp(d, mind, maxd)) / (rows - 1)
 
 
-def test_pos():
-    iq = [(    -8,    -3),(    -6,    -3),(     3,     2),(   202,   103),(   260,   133),(    -3,     1),(   -15,    -7),(   -13,    -6),(   -10,    -7),]
-
-    frequency = 1187205120;
-    magnitude = 85289;
-    first = 28;
-    last = 36;
-    mid = 32;
-    row = Row(freq=frequency, mag=magnitude, first=first, last=last, mid=mid, zero=0, iq=iq)
-
-    config = Config()
-    x = cpp_interpolate_pos(row, config)
-    """CPP:
-        amp : 292.043
-        maxi : 4
-        maxd : 0.5
-        sin : 0.89028
-        cos : 0.455413
-        x[0] : 226.744
-        x[1] : 292.043
-        x[2] : -2.21543
-        x.at(: 0): 0.0224453
-        x.at(: 1): 0.0188013
-        x.at(: 2): 0.573033
-        orient : 0
-        d : -0.493468
-        Res:31.5065
-
-        here:
-        amp: 292.04280508172087
-        maxi: 4
-        maxd: -0.5
-        f64_sin: 0.8902804502485364
-        f64_cos: 0.4554126918579051
-        x[0]: 226.7441582115686
-        x[1]: 292.04280508172087
-        x[2]: -2.215428658887704
-        x[0]: 0.02244526437831396
-        x[1]: 0.01880128107859886
-        x[2]: 0.5730329055304914
-        f64_d: -0.4934681078557972
-        31.5
-
-    """
-    print(x)
-    sys.exit()
-
-# test_pos()
 
 def show_trajectory(trajectories={}):
     import matplotlib.pyplot as plt
@@ -297,9 +249,8 @@ def show_plots(trajectories={}, scatter={}):
     ax = plt.gca()
     plt.show()
 
-
-def changed_interpolate(row, config):
-    
+def changed_interpolate_polyfit(row, config):
+    import numpy as np
     
     v = sum(np.sqrt(square_iq(row)))
     if v < 100:
@@ -316,7 +267,51 @@ def changed_interpolate(row, config):
     peak = find_peak(coeff)
     peak[0] += row.first
     return peak[0]
+
+def changed_interpolate_quinn_2nd(row, config):
+    # https://dspguru.com/dsp/howtos/how-to-interpolate-fft-peak/
+    from math import sqrt, log
+    def tau(x):
+        return 1/4 * log(3 * x**2 + 6*x + 1) - sqrt(6)/24 * log((x + 1 - sqrt(2/3))  /  (x + 1 + sqrt(2/3)))
     
+    # // assume the center component has the max amplitude
+    maxi = int(IPTS_DFT_NUM_COMPONENTS / 2)
+
+    # // off-screen components are always zero, don't use them
+    mind = -0.5
+    maxd = 0.5
+
+    if (row.iq[maxi - 1][REAL] == 0 and row.iq[maxi - 1][IMAG] == 0):
+        maxi += 1
+        mind = -1.0
+    elif (row.iq[maxi + 1][REAL] == 0 and row.iq[maxi +1][IMAG] == 0):
+        maxi -= 1
+        maxd = 1.0
+    # k =  index of the max (possibly local) magnitude of an DFT.
+    # X[i]  =  bin “i” of an DFT |X[i]| =  magnitude of DFT at bin “i”.
+    # k’  =  the interpolated bin location.
+    X = row.iq
+    k = maxi
+    # ap = (X[k + 1].r * X[k].r + X[k+1].i * X[k].i)  /  (X[k].r * X[k].r + X[k].i * X[k].i)
+    denom = (X[k][REAL] * X[k][REAL] + X[k][IMAG] * X[k][IMAG])
+    if denom == 0:
+        return float('nan')
+    ap = (X[k + 1][REAL] * X[k][REAL] + X[k+1][IMAG] * X[k][IMAG])  /  denom
+    if ap == 1:
+        return float('nan')
+    dp = -ap / (1 - ap)
+    # am = (X[k – 1].r * X[k].r + X[k – 1].i * X[k].i)  /  (X[k].r * X[k].r + X[k].i * X[k].i)
+    am = (X[k - 1][REAL] * X[k][REAL] + X[k - 1][IMAG] * X[k][IMAG])  /  (X[k][REAL] * X[k][REAL] + X[k][IMAG] * X[k][IMAG])
+    if am == 1:
+        return float('nan')
+    dm = am / (1 - am)
+    d = (dp + dm) / 2 + tau(dp * dp) - tau(dm * dm)
+    # k’ = k + d
+    return row.first + maxi + clamp(d, mind, maxd)
+
+def changed_interpolate(row, config):
+    # return changed_interpolate_quinn_2nd(row, config)
+    return changed_interpolate_polyfit(row, config)
 
 def slanted_incontact_tip_loss_tip_y_row():
     row = Row(freq=1210480000, mag=510696, first=18, last=26, mid=22, zero=0, iq=[[33, 122], [53, 201], [94, 352], [150, 569], [186, 690], [230, 868], [159, 570], [89, 308], [49, 166]])
@@ -403,10 +398,12 @@ def fit(data, order, weights):
     if weights is not None:
         m = np.diag(weights).dot(m)
         y = np.diag(weights).dot(y)
+    print(m)
 
     pinv = np.linalg.pinv(m)
     # Perform Moore-Penrose pseudoinverse
     betas = pinv.dot(np.array(y))
+    print(betas)
     return betas
 
 def make_poly(row, order):
@@ -421,8 +418,8 @@ def make_poly(row, order):
         return amplitude * np.exp(-((np.array(x) - mean) / 4 / stddev)**2)
 
     # weights = [0, 0.3, 0.5,   1, 1, 1,  0.5, 0.3, 0]
-    # weights = list(gaussian(list(range(9)), 1.0, 4, 0.7)) # ring
-    weights = np.hanning(9)
+    weights = list(gaussian(list(range(9)), 1.0, 4, 0.7)) # ring
+    # weights = np.hanning(9)
     
     # weights = [0, 0.0, 0.5,   1, 1, 1,  0.5, 0.0, 0] # tip
     # print(weights)
@@ -540,6 +537,58 @@ def do_things_on_frame(frame, interpolate_fun):
 
     # show_plots(results, scatter)
 
+
+
+def test_pos():
+    iq = [(    -8,    -3),(    -6,    -3),(     3,     2),(   202,   103),(   260,   133),(    -3,     1),(   -15,    -7),(   -13,    -6),(   -10,    -7),]
+
+    frequency = 1187205120;
+    magnitude = 85289;
+    first = 28;
+    last = 36;
+    mid = 32;
+    row = Row(freq=frequency, mag=magnitude, first=first, last=last, mid=mid, zero=0, iq=iq)
+
+    config = Config()
+    x = cpp_interpolate_pos(row, config)
+    """CPP:
+        amp : 292.043
+        maxi : 4
+        maxd : 0.5
+        sin : 0.89028
+        cos : 0.455413
+        x[0] : 226.744
+        x[1] : 292.043
+        x[2] : -2.21543
+        x.at(: 0): 0.0224453
+        x.at(: 1): 0.0188013
+        x.at(: 2): 0.573033
+        orient : 0
+        d : -0.493468
+        Res:31.5065
+
+        here:
+        amp: 292.04280508172087
+        maxi: 4
+        maxd: -0.5
+        f64_sin: 0.8902804502485364
+        f64_cos: 0.4554126918579051
+        x[0]: 226.7441582115686
+        x[1]: 292.04280508172087
+        x[2]: -2.215428658887704
+        x[0]: 0.02244526437831396
+        x[1]: 0.01880128107859886
+        x[2]: 0.5730329055304914
+        f64_d: -0.4934681078557972
+        31.5
+
+    """
+    print(x)
+
+    z = changed_interpolate(row, config)
+    sys.exit()
+
+test_pos()
 
 def process_frames(frames, interpolate):
     result = {}
@@ -683,7 +732,7 @@ if __name__ == "__main__":
 
 
 
-    # do_on_frame = True
+    do_on_frame = True
     if do_on_frame:
         # print("Frames: ", len(frames))
         f = frames[190]
@@ -691,7 +740,7 @@ if __name__ == "__main__":
 
         res = do_things_on_frame(f, interpolate)
 
-    do_full_frames = True
+    # do_full_frames = True
     if do_full_frames:
         res = process_frames(frames, interpolate)
         # print_data(d)
