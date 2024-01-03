@@ -409,6 +409,7 @@ def fit(data, order, weights):
 def make_poly(row, order):
 
     v = np.sqrt(square_iq(row))
+    # v = np.power(np.sqrt(square_iq(row)), 0.7)
 
     maxv = max(v)
     # weights = [z / maxv for z in v]
@@ -538,6 +539,59 @@ def do_things_on_frame(frame, interpolate_fun):
     # show_plots(results, scatter)
 
 
+def do_things_on_2_frame(before, after, interpolate_fun):
+
+    print_things = False
+
+    print_things = True
+    if print_things:
+        print("Before:")
+        these = (EntryType.IPTS_DFT_ID_POSITION,)
+        for k, v in sorted(before.items()):
+            if not k in these:
+                continue
+            print(k)
+            print_dft_rows(v)
+        print("After:")
+        for k, v in sorted(after.items()):
+            if not k in these:
+                continue
+            print(k)
+            print_dft_rows(v)
+
+    pos_1 = before[EntryType.IPTS_DFT_ID_POSITION]
+    pos_2 = after[EntryType.IPTS_DFT_ID_POSITION]
+    # interpolator = changed_interpolate_quinn_2nd
+    interpolator = cpp_interpolate_pos
+    x_1 = interpolator(pos_1.x[0], config)
+    x_2 = interpolator(pos_2.x[0], config)
+    print(x_1)
+    print(x_2)
+    y_1 = interpolator(pos_1.y[0], config)
+    y_2 = interpolator(pos_2.y[0], config)
+    print(y_1)
+    print(y_2)
+
+    results = {}
+    scatter = {}
+    scatter["x_cpp"] = [cpp_interpolate_pos(pos_1.x[0], config), 300]
+    scatter["x_chng"] = [changed_interpolate(pos_1.x[0], config), 300]
+
+    def series(row):
+        v = np.sqrt(square_iq(row))
+        return list(zip([z+ row.first for z in range(9)], v))
+    results["pos_1.x[0]_data"] = series(pos_1.x[0])
+    results["pos_2.x[0]_data"] = series(pos_2.x[0])
+
+    def series_iq(row, index):
+        return list((z + row.first, row.iq[z][index]) for z in range(9))
+    results["pos_1.x[0].real"] = series_iq(pos_1.x[0], REAL)
+    results["pos_2.x[0].real"] = series_iq(pos_2.x[0], REAL)
+    results["pos_1.x[0].imag"] = series_iq(pos_1.x[0], IMAG)
+    results["pos_2.x[0].imag"] = series_iq(pos_2.x[0], IMAG)
+
+    show_plots(results, scatter)
+
 
 def test_pos():
     iq = [(    -8,    -3),(    -6,    -3),(     3,     2),(   202,   103),(   260,   133),(    -3,     1),(   -15,    -7),(   -13,    -6),(   -10,    -7),]
@@ -615,22 +669,28 @@ def process_frames(frames, interpolate):
             y = interpolate(row.y[index], config)
             return [x,y]
 
+        def coord_interp_cpp(row, index):
+            x = cpp_interpolate_pos(row.x[index], config)
+            y = cpp_interpolate_pos(row.y[index], config)
+            return [x,y]
+
 
         append("pos_[0]", coord_interp(pos, 0))
         append("pos_[1]", coord_interp(pos, 1))
+        append("cpp_pos_[1]", coord_interp_cpp(pos, 1))
         # append("pos_[4]", coord_interp(pos, 4))
 
 
-        append("pos2_[0]", coord_interp(pos2, 0))
-        append("pos2_[1]", coord_interp(pos2, 1))
-        append("pos2_[3]", coord_interp(pos2, 3))
-        append("pos2_[5]", coord_interp(pos2, 5))
+        # append("pos2_[0]", coord_interp(pos2, 0))
+        # append("pos2_[1]", coord_interp(pos2, 1))
+        # append("pos2_[3]", coord_interp(pos2, 3))
+        # append("pos2_[5]", coord_interp(pos2, 5))
 
         append("but_[3]", coord_interp(but, 3))
 
 
-        f_pos2 = cpp_interpolate_frequency(but, config, maxi_override=0)
-        append("f_pos2", [i * dx, f_pos2 * dy + y_offset])
+        # f_pos2 = cpp_interpolate_frequency(but, config, maxi_override=0)
+        # append("f_pos2", [i * dx, f_pos2 * dy + y_offset])
 
         # append("pres_[2]", coord_interp(pres, 2))
         # append("pres_[3]", coord_interp(pres, 3))
@@ -672,6 +732,7 @@ test_scenarios = {
     "spiral_out_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
     "spiral_out_new_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=changed_interpolate),
     "diagonal":Scenario("./diagonal.json.gz", max_index=1e6, interp=changed_interpolate),
+    "diagonal_quin":Scenario("./diagonal.json.gz", max_index=1e6, interp=changed_interpolate_quinn_2nd),
 }
 
 def compare_scenario(data, interp_1, interp_2, keys):
@@ -697,6 +758,7 @@ if __name__ == "__main__":
 
     d = load(scenario.filename)
     interpolate = scenario.interp
+    print(interpolate.__name__)
 
 
     frames = make_frames(d)
@@ -710,6 +772,7 @@ if __name__ == "__main__":
     do_on_frame = False
     do_comparison = False
     print_kernels = False
+    do_on_two_frame = False
 
 
     # do_full = True
@@ -721,7 +784,7 @@ if __name__ == "__main__":
         show_trajectory(res)
 
 
-    do_comparison = True
+    # do_comparison = True
     if do_comparison:
         keys = [
             "pos_from_pos",
@@ -729,7 +792,7 @@ if __name__ == "__main__":
             # "pos_from_pos2",
             # "ring_pos_from_pos2",
         ]
-        compare_scenario(d, cpp_interpolate_pos, changed_interpolate, keys)
+        compare_scenario(d, cpp_interpolate_pos, interpolate, keys)
 
 
 
@@ -742,12 +805,26 @@ if __name__ == "__main__":
 
         res = do_things_on_frame(f, interpolate)
 
-    # do_full_frames = True
+    # do_on_two_frame = True
+    if do_on_two_frame:
+        # print("Frames: ", len(frames))
+        before = frames[188]
+        after = frames[189]
+        # print(f)
+
+        res = do_things_on_2_frame(before, after, interpolate)
+
+
+    do_full_frames = True
     if do_full_frames:
         res = process_frames(frames, interpolate)
         # print_data(d)
-        # s = process_single_frame(frames[190], interpolate)
-        # res["OURMARKER*"] = s["pos_from_pos"]
+        s = process_single_frame(frames[189], interpolate)
+        print(s)
+        res["OURMARKER*"] = s["ring_pos_from_pos"]
+        s = process_single_frame(frames[188], interpolate)
+        res["MARK2*"] = s["ring_pos_from_pos"]
+        res["MARK3*"] = s["pos_from_pos"]
         show_trajectory(res)
 
     # print_kernels = True
