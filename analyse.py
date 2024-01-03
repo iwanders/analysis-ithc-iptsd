@@ -398,12 +398,12 @@ def fit(data, order, weights):
     if weights is not None:
         m = np.diag(weights).dot(m)
         y = np.diag(weights).dot(y)
-    print(m)
+    # print(m)
 
     pinv = np.linalg.pinv(m)
     # Perform Moore-Penrose pseudoinverse
     betas = pinv.dot(np.array(y))
-    print(betas)
+    # print(betas)
     return betas
 
 def make_poly(row, order):
@@ -588,7 +588,7 @@ def test_pos():
     z = changed_interpolate(row, config)
     sys.exit()
 
-test_pos()
+# test_pos()
 
 def process_frames(frames, interpolate):
     result = {}
@@ -671,6 +671,7 @@ test_scenarios = {
     "spiral_out_loss_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
     "spiral_out_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
     "spiral_out_new_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=changed_interpolate),
+    "diagonal":Scenario("./diagonal.json.gz", max_index=1e6, interp=changed_interpolate),
 }
 
 def compare_scenario(data, interp_1, interp_2, keys):
@@ -708,6 +709,7 @@ if __name__ == "__main__":
     do_full_frames = False
     do_on_frame = False
     do_comparison = False
+    print_kernels = False
 
 
     # do_full = True
@@ -719,20 +721,20 @@ if __name__ == "__main__":
         show_trajectory(res)
 
 
-    # do_comparison = True
+    do_comparison = True
     if do_comparison:
         keys = [
             "pos_from_pos",
             "ring_pos_from_pos",
-            "pos_from_pos2",
-            "ring_pos_from_pos2",
+            # "pos_from_pos2",
+            # "ring_pos_from_pos2",
         ]
         compare_scenario(d, cpp_interpolate_pos, changed_interpolate, keys)
 
 
 
 
-    do_on_frame = True
+    # do_on_frame = True
     if do_on_frame:
         # print("Frames: ", len(frames))
         f = frames[190]
@@ -747,6 +749,13 @@ if __name__ == "__main__":
         # s = process_single_frame(frames[190], interpolate)
         # res["OURMARKER*"] = s["pos_from_pos"]
         show_trajectory(res)
-        
+
+    # print_kernels = True
+    if print_kernels:
+        def gaussian(x, amplitude, mean, stddev):
+            return amplitude * np.exp(-((np.array(x) - mean) / 4 / stddev)**2)
+
+        print("static constexpr Weights gaussian_at_4_stddev_0_4 {{{}}};".format(", ".join(f"{x}" for x in gaussian(list(range(9)), 1.0, 4, 0.4))))
+        print("static constexpr Weights gaussian_at_4_stddev_0_7 {{{}}};".format(", ".join(f"{x}" for x in gaussian(list(range(9)), 1.0, 4, 0.7))))
 
 
