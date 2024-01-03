@@ -542,6 +542,7 @@ def do_things_on_frame(frame, interpolate_fun):
 def do_things_on_2_frame(before, after, interpolate_fun):
 
     print_things = False
+    ri = 1
 
     print_things = True
     if print_things:
@@ -562,33 +563,37 @@ def do_things_on_2_frame(before, after, interpolate_fun):
     pos_1 = before[EntryType.IPTS_DFT_ID_POSITION]
     pos_2 = after[EntryType.IPTS_DFT_ID_POSITION]
     # interpolator = changed_interpolate_quinn_2nd
-    interpolator = cpp_interpolate_pos
-    x_1 = interpolator(pos_1.x[0], config)
-    x_2 = interpolator(pos_2.x[0], config)
+    interpolator = changed_interpolate
+    # interpolator = cpp_interpolate_pos
+    x_1 = interpolator(pos_1.x[1], config)
+    x_2 = interpolator(pos_2.x[1], config)
     print(x_1)
     print(x_2)
-    y_1 = interpolator(pos_1.y[0], config)
-    y_2 = interpolator(pos_2.y[0], config)
+    y_1 = interpolator(pos_1.y[1], config)
+    y_2 = interpolator(pos_2.y[1], config)
     print(y_1)
     print(y_2)
 
     results = {}
     scatter = {}
-    scatter["x_cpp"] = [cpp_interpolate_pos(pos_1.x[0], config), 300]
-    scatter["x_chng"] = [changed_interpolate(pos_1.x[0], config), 300]
+    scatter["x_cpp1"] = [cpp_interpolate_pos(pos_1.x[ri], config), 300]
+    scatter["x_chng1"] = [changed_interpolate(pos_1.x[ri], config), 300]
+
+    scatter["x_cpp2"] = [cpp_interpolate_pos(pos_2.x[ri], config), 300]
+    scatter["x_chng2"] = [changed_interpolate(pos_2.x[ri], config), 300]
 
     def series(row):
         v = np.sqrt(square_iq(row))
         return list(zip([z+ row.first for z in range(9)], v))
-    results["pos_1.x[0]_data"] = series(pos_1.x[0])
-    results["pos_2.x[0]_data"] = series(pos_2.x[0])
+    results["pos_1.x[ri]_data"] = series(pos_1.x[ri])
+    results["pos_2.x[ri]_data"] = series(pos_2.x[ri])
 
     def series_iq(row, index):
         return list((z + row.first, row.iq[z][index]) for z in range(9))
-    results["pos_1.x[0].real"] = series_iq(pos_1.x[0], REAL)
-    results["pos_2.x[0].real"] = series_iq(pos_2.x[0], REAL)
-    results["pos_1.x[0].imag"] = series_iq(pos_1.x[0], IMAG)
-    results["pos_2.x[0].imag"] = series_iq(pos_2.x[0], IMAG)
+    results["pos_1.x[ri].real"] = series_iq(pos_1.x[ri], REAL)
+    results["pos_2.x[ri].real"] = series_iq(pos_2.x[ri], REAL)
+    results["pos_1.x[ri].imag"] = series_iq(pos_1.x[ri], IMAG)
+    results["pos_2.x[ri].imag"] = series_iq(pos_2.x[ri], IMAG)
 
     show_plots(results, scatter)
 
@@ -805,7 +810,7 @@ if __name__ == "__main__":
 
         res = do_things_on_frame(f, interpolate)
 
-    # do_on_two_frame = True
+    do_on_two_frame = True
     if do_on_two_frame:
         # print("Frames: ", len(frames))
         before = frames[188]
@@ -815,7 +820,7 @@ if __name__ == "__main__":
         res = do_things_on_2_frame(before, after, interpolate)
 
 
-    do_full_frames = True
+    # do_full_frames = True
     if do_full_frames:
         res = process_frames(frames, interpolate)
         # print_data(d)
