@@ -15,6 +15,8 @@ import json
 from collections import namedtuple
 from enum import Enum
 
+clamp = lambda x, y, z: max(min(x, z), y)
+
 IPTS_DFT_NUM_COMPONENTS = 9
 IPTS_DFT_PRESSURE_ROWS  = 6
 REAL = 0
@@ -77,13 +79,22 @@ def get_metadata(d):
         if z.type == EntryType.METADATA:
             return z.payload
 
+def get_maxi(row):
+    maxi = 0
+    vi = -float("inf")
+    for i, (real, imag) in enumerate(row.iq):
+        if vi < abs(real):
+            maxi = i
+            vi = abs(real)
+    return clamp(maxi, 1, 7)
 
-clamp = lambda x, y, z: max(min(x, z), y)
+
 def cpp_interpolate_pos(row, config):
     import math
 
     # // assume the center component has the max amplitude
     maxi = int(IPTS_DFT_NUM_COMPONENTS / 2)
+    # maxi = get_maxi(row)
 
     # // off-screen components are always zero, don't use them
     mind = -0.5
@@ -276,6 +287,7 @@ def changed_interpolate_quinn_2nd(row, config):
     
     # // assume the center component has the max amplitude
     maxi = int(IPTS_DFT_NUM_COMPONENTS / 2)
+    # maxi = get_maxi(row)
 
     # // off-screen components are always zero, don't use them
     mind = -0.5
@@ -411,13 +423,8 @@ def make_poly(row, order):
     v = np.sqrt(square_iq(row))
     # v = np.power(np.sqrt(square_iq(row)), 0.7)
 
-    maxi = 0
-    vi = 0
-    for i, d in enumerate(v):
-        if vi < d:
-            maxi = i
-            vi = d
-    # print(maxi)
+    maxi = get_maxi(row)
+
 
     maxv = max(v)
     # weights = [z / maxv for z in v]
@@ -797,7 +804,7 @@ if __name__ == "__main__":
         show_trajectory(res)
 
 
-    do_comparison = True
+    # do_comparison = True
     if do_comparison:
         keys = [
             "pos_from_pos",
@@ -818,11 +825,20 @@ if __name__ == "__main__":
 
         res = do_things_on_frame(f, interpolate)
 
-    # do_on_two_frame = True
+    f1_diag_centerchange = 188
+    f2_diag_centerchange = f1_diag_centerchange + 1
+
+    f1_diag_erratic = 158
+    f2_diag_erratic = f1_diag_erratic + 1
+
+    f1 = f1_diag_erratic
+    f2 = f2_diag_erratic
+
+    do_on_two_frame = True
     if do_on_two_frame:
         # print("Frames: ", len(frames))
-        before = frames[188]
-        after = frames[189]
+        before = frames[f1]
+        after = frames[f2]
         # print(f)
 
         res = do_things_on_2_frame(before, after, interpolate)
@@ -832,10 +848,10 @@ if __name__ == "__main__":
     if do_full_frames:
         res = process_frames(frames, interpolate)
         # print_data(d)
-        s = process_single_frame(frames[189], interpolate)
+        s = process_single_frame(frames[f1], interpolate)
         print(s)
         res["OURMARKER*"] = s["ring_pos_from_pos"]
-        s = process_single_frame(frames[188], interpolate)
+        s = process_single_frame(frames[f2], interpolate)
         res["MARK2*"] = s["ring_pos_from_pos"]
         res["MARK3*"] = s["pos_from_pos"]
         show_trajectory(res)
