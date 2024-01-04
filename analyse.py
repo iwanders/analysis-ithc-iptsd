@@ -411,6 +411,14 @@ def make_poly(row, order):
     v = np.sqrt(square_iq(row))
     # v = np.power(np.sqrt(square_iq(row)), 0.7)
 
+    maxi = 0
+    vi = 0
+    for i, d in enumerate(v):
+        if vi < d:
+            maxi = i
+            vi = d
+    # print(maxi)
+
     maxv = max(v)
     # weights = [z / maxv for z in v]
     # print("weights", weights)
@@ -419,7 +427,7 @@ def make_poly(row, order):
         return amplitude * np.exp(-((np.array(x) - mean) / 4 / stddev)**2)
 
     # weights = [0, 0.3, 0.5,   1, 1, 1,  0.5, 0.3, 0]
-    weights = list(gaussian(list(range(9)), 1.0, 4, 0.7)) # ring
+    weights = list(gaussian(list(range(9)), 1.0, maxi, 0.7)) # ring
     # weights = np.hanning(9)
     
     # weights = [0, 0.0, 0.5,   1, 1, 1,  0.5, 0.0, 0] # tip
@@ -789,7 +797,7 @@ if __name__ == "__main__":
         show_trajectory(res)
 
 
-    # do_comparison = True
+    do_comparison = True
     if do_comparison:
         keys = [
             "pos_from_pos",
@@ -810,7 +818,7 @@ if __name__ == "__main__":
 
         res = do_things_on_frame(f, interpolate)
 
-    do_on_two_frame = True
+    # do_on_two_frame = True
     if do_on_two_frame:
         # print("Frames: ", len(frames))
         before = frames[188]
