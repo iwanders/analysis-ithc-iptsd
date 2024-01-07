@@ -89,12 +89,14 @@ def get_maxi(row):
     return clamp(maxi, 1, 7)
 
 
-def cpp_interpolate_pos(row, config):
+def cpp_interpolate_pos(row, config, maxi_override = None):
     import math
 
     # // assume the center component has the max amplitude
     maxi = int(IPTS_DFT_NUM_COMPONENTS / 2)
     # maxi = get_maxi(row)
+    if maxi_override is not None:
+        maxi = maxi_override
 
     # // off-screen components are always zero, don't use them
     mind = -0.5
@@ -325,6 +327,9 @@ def changed_interpolate_quinn_2nd(row, config):
 
 def changed_interpolate(row, config):
     # return changed_interpolate_quinn_2nd(row, config)
+    print(row)
+    maxi_override = get_maxi(row)
+    return cpp_interpolate_pos(row, config, maxi_override)
     return changed_interpolate_polyfit(row, config)
 
 def slanted_incontact_tip_loss_tip_y_row():
@@ -428,8 +433,8 @@ def make_poly(row, order):
     maxi = get_maxi(row)
 
 
-    maxv = max(v)
-    # weights = [z / maxv for z in v]
+    # maxv = max(v)
+    # weights = [np.power(z / maxv, 8) for z in v]
     # print("weights", weights)
     
     def gaussian(x, amplitude, mean, stddev):
@@ -775,7 +780,7 @@ def compare_scenario(data, interp_1, interp_2, keys):
 
 if __name__ == "__main__":
     # Metadata(size=MetataSize(rows=46, columns=68, width=27389, height=18259), transform=MetataTransform(xx=408.791, yx=0, tx=0, xy=0, yy=405.756, ty=0))
-    default_interpolate = cpp_interpolate_pos
+    default_interpolate = changed_interpolate
     scenario = test_scenarios.get(sys.argv[1], Scenario(sys.argv[1], max_index=None, interp=default_interpolate))
 
     d = load(scenario.filename)
@@ -806,7 +811,7 @@ if __name__ == "__main__":
         show_trajectory(res)
 
 
-    do_comparison = True
+    # do_comparison = True
     if do_comparison:
         keys = [
             "pos_from_pos",
@@ -833,10 +838,13 @@ if __name__ == "__main__":
     f1_diag_erratic = 158
     f2_diag_erratic = f1_diag_erratic + 1
 
-    f1 = f1_diag_erratic
-    f2 = f2_diag_erratic
+    f1_not_diagonal = 129
+    f2_not_diagonal = f1_not_diagonal + 1
 
-    # do_on_two_frame = True
+    f1 = f1_not_diagonal
+    f2 = f1_not_diagonal
+
+    do_on_two_frame = True
     if do_on_two_frame:
         # print("Frames: ", len(frames))
         before = frames[f1]
@@ -846,7 +854,7 @@ if __name__ == "__main__":
         res = do_things_on_2_frame(before, after, interpolate)
 
 
-    # do_full_frames = True
+    do_full_frames = True
     if do_full_frames:
         res = process_frames(frames, interpolate)
         # print_data(d)
