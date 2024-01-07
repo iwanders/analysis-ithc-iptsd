@@ -239,6 +239,8 @@ def show_trajectory(trajectories={}):
     plt.legend(loc="upper right")
     ax = plt.gca()
     ax.set_aspect('equal', adjustable='box')
+    plt.grid(visible=True, which='both', axis='both',
+        data=(list(range(69)), list(range(45))))
     plt.show()
 
 
@@ -804,7 +806,7 @@ if __name__ == "__main__":
         show_trajectory(res)
 
 
-    # do_comparison = True
+    do_comparison = True
     if do_comparison:
         keys = [
             "pos_from_pos",
@@ -834,7 +836,7 @@ if __name__ == "__main__":
     f1 = f1_diag_erratic
     f2 = f2_diag_erratic
 
-    do_on_two_frame = True
+    # do_on_two_frame = True
     if do_on_two_frame:
         # print("Frames: ", len(frames))
         before = frames[f1]
