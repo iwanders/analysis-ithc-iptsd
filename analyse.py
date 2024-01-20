@@ -747,14 +747,25 @@ def time_series_frames(frames):
         but = frame[EntryType.IPTS_DFT_ID_BUTTON]
         print(pos.x)
         append("phase_pos", (i, pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
-        append("phase_pos2", (i, pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        # append("phase_pos2_0", (i, pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        # append("real_pos2_0", (i, pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL]))
+        # append("real_pos2_1", (i, pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL]))
+
+        append("phase_pos2_1", (i, pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        append("phase_pos2_2", (i, pos2.x[2].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        append("phase_pos2_3", (i, pos2.x[3].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        append("phase_pos2_4", (i, pos2.x[4].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        append("phase_pos2_5", (i, pos2.x[5].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        # append("phase_pos2_6", (i, pos2.x[6].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        # append("phase_pos2_7", (i, pos2.x[7].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
 
     def plot(name):
         p = np.array(result[name])
         plt.plot(p[:, 0], p[:, 1], label=name)
 
-    plot("phase_pos")
-    plot("phase_pos2")
+    for k in result.keys():
+        plot(k)
+
     plt.legend()
     plt.show()
 
@@ -778,7 +789,8 @@ def make_frames(d):
     frame = { }
     for z in d:
         frame[z.type] = z.payload
-        if z.type == EntryType.IPTS_DFT_ID_POSITION:
+        # if z.type == EntryType.IPTS_DFT_ID_POSITION:
+        if z.type == EntryType.IPTS_DFT_ID_PRESSURE:
             frames.append(frame)
             frame = {}
     return frames
