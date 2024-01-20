@@ -22,6 +22,9 @@ IPTS_DFT_PRESSURE_ROWS  = 6
 REAL = 0
 IMAG = 1
 
+def comp_to_str(z):
+    return {REAL: "REAL", IMAG: "IMAG"}[z]
+
 class EntryType(Enum):
     IPTS_DFT_ID_POSITION = 6
     IPTS_DFT_ID_POSITION2 = 7
@@ -738,6 +741,7 @@ def time_series_frames(frames):
     y_offset = 20.0
     dy = 10.0
 
+
     for i, frame in enumerate(frames):
         if len(frame.items()) < 4:
             continue
@@ -746,22 +750,38 @@ def time_series_frames(frames):
         pres = frame[EntryType.IPTS_DFT_ID_PRESSURE]
         but = frame[EntryType.IPTS_DFT_ID_BUTTON]
         print(pos.x)
-        append("phase_pos", (i, pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+
+        msg = pos
+        element = IMAG
+
         # append("phase_pos2_0", (i, pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
         # append("real_pos2_0", (i, pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL]))
         # append("real_pos2_1", (i, pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL]))
 
-        append("phase_pos2_1", (i, pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
-        append("phase_pos2_2", (i, pos2.x[2].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
-        append("phase_pos2_3", (i, pos2.x[3].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
-        append("phase_pos2_4", (i, pos2.x[4].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
-        append("phase_pos2_5", (i, pos2.x[5].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
-        # append("phase_pos2_6", (i, pos2.x[6].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
-        # append("phase_pos2_7", (i, pos2.x[7].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        # for r in range(len(msg.x)):
+            # append(f"{comp_to_str(element)}_{element}_{r}", (i, msg.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][element]))
+
+        # append(f"{comp_to_str(element)}_real_{r}", (i, msg.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL]))
+        # append(f"{comp_to_str(element)}_imag_{r}", (i, msg.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+
+        r = 1
+        # append(f"{comp_to_str(element)}_const_{r}:*", (msg.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], msg.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+
+
+        # This is surprisingly in the top half plane.
+        append(f"{comp_to_str(element)}_const_{r}:*", (pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+
+        # append(f"{comp_to_str(element)}_const:*", (msg.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG], msg.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        # append(f"{comp_to_str(element)}_const:*", (msg.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG], msg.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL]))
+
+
 
     def plot(name):
         p = np.array(result[name])
-        plt.plot(p[:, 0], p[:, 1], label=name)
+        if name.endswith("*"):
+            plt.scatter(p[:, 0], p[:, 1], c=range(p.shape[0]), label=name)
+        else:
+            plt.plot(p[:, 0], p[:, 1], label=name)
 
     for k in result.keys():
         plot(k)
