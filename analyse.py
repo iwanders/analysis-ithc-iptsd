@@ -752,16 +752,18 @@ def time_series_frames(frames):
         print(pos.x)
 
         msg = pos
-        element = IMAG
+        # element = IMAG
 
         # append("phase_pos2_0", (i, pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
         # append("real_pos2_0", (i, pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL]))
         # append("real_pos2_1", (i, pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL]))
 
 
-        # for element in (REAL, IMAG):
-            # for r in range(len(msg.x)):
-                # append(f"{comp_to_str(element)}_{element}_{r}", (i, msg.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][element]))
+        for element in (REAL, IMAG):
+            for r in range(min(len(msg.x), 6)):
+                # maxi = get_maxi(msg.x[r])
+                maxi = int(IPTS_DFT_PRESSURE_ROWS / 2)
+                append(f"{comp_to_str(element)}_{element}_{r}", (i, msg.x[r].iq[maxi][element]))
 
         # append(f"{comp_to_str(element)}_real_{r}", (i, msg.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL]))
         # append(f"{comp_to_str(element)}_imag_{r}", (i, msg.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
@@ -770,11 +772,14 @@ def time_series_frames(frames):
         # append(f"iq_const_{r}:*", (pos.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
 
         # This is very circular.
-        # append(f"{comp_to_str(element)}_const_1:*", (pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        # append(f"pos_iq_const_1:*", (pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        # So is this;
+        # append(f"pos2_iq_const_1:*", (pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
 
 
         # This is surprisingly in the top half plane.
         # append(f"pos_0_iq:*", (pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+
 
         # This spirals...
         # append(f"pos2_0_iq:*", (pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
