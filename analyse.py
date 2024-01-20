@@ -725,6 +725,40 @@ def process_frames(frames, interpolate):
     return result
 
 
+def time_series_frames(frames):
+    import matplotlib.pyplot as plt
+    result = {}
+    def append(name, entry):
+        if not name in result:
+            result[name] = []
+        result[name].append(entry)
+
+    total_frames = len(frames)
+    dx = 50.0 / total_frames
+    y_offset = 20.0
+    dy = 10.0
+
+    for i, frame in enumerate(frames):
+        if len(frame.items()) < 4:
+            continue
+        pos = frame[EntryType.IPTS_DFT_ID_POSITION]
+        pos2 = frame[EntryType.IPTS_DFT_ID_POSITION2]
+        pres = frame[EntryType.IPTS_DFT_ID_PRESSURE]
+        but = frame[EntryType.IPTS_DFT_ID_BUTTON]
+        print(pos.x)
+        append("phase_pos", (i, pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        append("phase_pos2", (i, pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+
+    def plot(name):
+        p = np.array(result[name])
+        plt.plot(p[:, 0], p[:, 1], label=name)
+
+    plot("phase_pos")
+    plot("phase_pos2")
+    plt.legend()
+    plt.show()
+
+
 
 def print_data(d):
     for i, r in enumerate(d):
@@ -800,6 +834,7 @@ if __name__ == "__main__":
     do_comparison = False
     print_kernels = False
     do_on_two_frame = False
+    plot_time_series = False
 
 
     # do_full = True
@@ -844,7 +879,7 @@ if __name__ == "__main__":
     f1 = f1_not_diagonal
     f2 = f1_not_diagonal
 
-    do_on_two_frame = True
+    # do_on_two_frame = True
     if do_on_two_frame:
         # print("Frames: ", len(frames))
         before = frames[f1]
@@ -854,7 +889,7 @@ if __name__ == "__main__":
         res = do_things_on_2_frame(before, after, interpolate)
 
 
-    do_full_frames = True
+    # do_full_frames = True
     if do_full_frames:
         res = process_frames(frames, interpolate)
         # print_data(d)
@@ -874,4 +909,11 @@ if __name__ == "__main__":
         print("static constexpr Weights gaussian_at_4_stddev_0_4 {{{}}};".format(", ".join(f"{x}" for x in gaussian(list(range(9)), 1.0, 4, 0.4))))
         print("static constexpr Weights gaussian_at_4_stddev_0_7 {{{}}};".format(", ".join(f"{x}" for x in gaussian(list(range(9)), 1.0, 4, 0.7))))
 
+
+    plot_time_series = True
+    if plot_time_series:
+        # Maybe we need to extract out some modulation that the now-active pen does?
+        time_series_frames(frames)
+        
+        
 
