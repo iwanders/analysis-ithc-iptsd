@@ -9,6 +9,11 @@
 # https://dspguru.com/dsp/howtos/how-to-interpolate-fft-peak/
 # https://www.dsprelated.com/showarticle/1043.php
 
+# Can we sniff the data on windows to see if it is actually the same with the phase spiking?
+# Perhaps https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/how-to-capture-a-usb-event-trace
+# Or wireshark with https://wiki.wireshark.org/CaptureSetup/USB#windows
+
+
 
 import sys
 import json
