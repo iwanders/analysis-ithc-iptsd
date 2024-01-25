@@ -9,6 +9,19 @@ import gzip
 import ctypes
 import struct
 
+"""
+https://github.com/search?q=repo%3AMartinDrab%2FIRPMon%20DataStripThreshold&type=code
+
+May be able to change strip length or disable stripping all together;
+    DataStripThreshold : Cardinal;
+    StripData : ByteBool;
+
+boolean in register;
+
+https://github.com/MartinDrab/IRPMon/blob/983d656a53c4a2085a33f3b08c184d3b79537265/kbase/driver-settings.c#L169-L170
+
+"""
+
 # Helper to hold the relevant fields from the log records.
 Irp = namedtuple("Irp", [
     # The index of this Irp record in the original file.
