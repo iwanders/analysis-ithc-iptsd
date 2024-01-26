@@ -8,6 +8,8 @@ from enum import Enum
 import gzip
 import ctypes
 import struct
+import pickle
+import os
 
 """
 https://github.com/search?q=repo%3AMartinDrab%2FIRPMon%20DataStripThreshold&type=code
@@ -20,7 +22,25 @@ boolean in register;
 
 https://github.com/MartinDrab/IRPMon/blob/983d656a53c4a2085a33f3b08c184d3b79537265/kbase/driver-settings.c#L169-L170
 
+from a real dump;
+
+Reading size: 1820
+Reading size: 1540
+Reading size: 4340
+Reading size: 2000
+Reading size: 1540
+Reading size: 64
+
 """
+# https://stackoverflow.com/a/312464
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+def hexdump(data, columns=64):
+    for row in chunks(data, columns):
+        print("".join(f"{z:0>2x} " for z in row))
 
 # Helper to hold the relevant fields from the log records.
 Irp = namedtuple("Irp", [
@@ -124,6 +144,7 @@ def parse_log_file(file, target_driver):
             irp_index += 1
 
     return records
+
 
 
 # iptsd binary format;
@@ -286,14 +307,29 @@ def iptsd_dumper(out_path, data_records):
 
 if __name__ == '__main__':
     in_file = sys.argv[1]
-    opener = gzip.open if in_file.endswith("gz") else open
-    with opener(in_file, "rb") as f:
-        records = parse_log_file(codecs.iterdecode(f, encoding='utf-8', errors='ignore'), target_driver="\Driver\IntelTHCBase")
 
+    cache_file = os.path.join("/tmp/", os.path.abspath(in_file).replace("/", "_").replace(".bin.gz", ".pickle"))
+    cache_enabled = True
+    if os.path.isfile(cache_file) and cache_enabled:
+        with open(cache_file, "rb") as f:
+            records = pickle.load(f)
+    else:
+        opener = gzip.open if in_file.endswith("gz") else open
+        with opener(in_file, "rb") as f:
+            records = parse_log_file(codecs.iterdecode(f, encoding='utf-8', errors='ignore'), target_driver="\Driver\IntelTHCBase")
+        with open(cache_file, "wb") as f:
+            pickle.dump(records, f)
+
+    i = 0
     data_records = []
     for r in records:
-        print(r)
+        # print(r)
         data_records.append(r.data)
+        i += 1
+        print(len(r.data))
+        print(hexdump(r.data))
+        # if i > 2:
+            # break;
 
     iptsd_dumper("/tmp/out.bin", data_records)
 
