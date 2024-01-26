@@ -58,6 +58,10 @@ Irp = namedtuple("Irp", [
     "address",
     # Data of the request.
     "data",
+    # Previous processor mode for the current thread.
+    "previous_mode",
+    # Indicates the execution mode of the original requester of the operation, one of UserMode or KernelMode
+    "requestor_mode",
 ])
 
 Function = Enum('Function', [
@@ -73,6 +77,7 @@ Function = Enum('Function', [
     'Power',
     ])
 
+Mode = Enum('Mode', ['KernelMode', 'UserMode'])
 
 Status = Enum('Status', [
     'STATUS_SUCCESS',
@@ -106,6 +111,10 @@ def parse_log_file(file, target_driver):
             irp_id = int(line.split('=', 1)[1].strip())
         elif line.startswith("Major function ="):
             function = Function[line.split('=', 1)[1].strip()]
+        elif line.startswith("Previous mode = "):
+            previous_mode = Mode[line.split('=', 1)[1].strip()]
+        elif line.startswith("Requestor mode = "):
+            requestor_mode = Mode[line.split('=', 1)[1].strip()]
         elif line.startswith("IRP address ="):
             irp_address = int(line.split('=', 1)[1].strip(), 0)
         elif line.startswith("Driver name = "):
@@ -134,6 +143,8 @@ def parse_log_file(file, target_driver):
                     time = curtime,
                     status = status_constant,
                     address = irp_address,
+                    previous_mode = previous_mode,
+                    requestor_mode = requestor_mode,
                     data = bytedata)
                 records.append(record)
 
@@ -373,9 +384,18 @@ if __name__ == '__main__':
         with open(cache_file, "wb") as f:
             pickle.dump(records, f)
 
+    split_records = []
+    for r in records:
+        request = r.requestor_mode == Mode.UserMode
+        split_records.append((request, r))
+            
+
     i = 0
     data_records = []
-    for r in records:
+    for request, r in split_records:
+        if request:
+            print(r)
+            continue
         # print(r)
         # data_records.append(r.data)
         i += 1
@@ -389,7 +409,7 @@ if __name__ == '__main__':
         # if i > 2:
             # break;
 
-    last = records[-1]
+    last = split_records[-1]
     print(len(last.data))
     print(hexdump(last.data))
 
