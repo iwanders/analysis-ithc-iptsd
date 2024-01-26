@@ -290,6 +290,59 @@ struct [[gnu::packed]] ipts_touch_metadata_size {
 };
 """
 
+
+"""
+from irpmon, len < 20; len == 16;
+09 8e a5 39 02 01 00 90 01 ad f7 d8 97 43 15 00 
+09 8e a5 3a 02 01 00 90 01 ad f7 d8 97 43 15 00 
+09 8e a5 3b 02 01 00 90 01 00 00 00 00 43 15 00 
+09 8e a5 3c 02 01 00 90 01 00 00 00 00 43 15 00 
+09 8e a5 3d 02 01 00 90 01 00 00 00 00 43 15 00 
+
+09 8e a5 e8 02 01 00 90 01 00 00 00 00 43 15 00 
+09 8e a5 e9 02 01 00 90 01 00 00 00 00 43 15 00 
+09 8e a5 ea 02 01 00 90 01 00 00 00 00 43 15 00 
+09 8e a5 eb 02 01 00 90 01 00 00 00 00 0e 15 00 
+09 8e a5 ec 02 01 00 90 01 00 00 00 00 0e 15 00 
+09 8e a5 ed 02 01 00 90 01 00 00 00 00 0e 15 00 
+
+09 8e a5 f9 02 01 00 90 01 00 00 00 00 0e 15 00 
+09 8e a5 fa 02 01 00 90 01 00 00 00 00 0e 15 00 
+09 8e a5 fb 02 01 00 90 01 00 00 00 00 0e 15 00 
+09 8e a5 fc 02 01 00 90 01 00 00 00 00 0e 15 00 
+09 8e a5 fd 02 01 00 90 01 00 00 00 00 d8 14 00 
+09 8e a5 fe 02 01 00 90 01 00 00 00 00 d8 14 00 
+09 8e a5 ff 02 01 00 90 01 00 00 00 00 d8 14 00 
+09 8e a5 00 02 01 00 90 01 00 00 00 00 d8 14 00 
+
+Lengths look like:
+16
+7488
+7488
+16
+7488
+7488
+7488
+16
+7488
+7488
+16
+7488
+7488
+7488
+16
+7488
+7488
+16
+7488
+7488
+7488
+
+
+Data from irpmon is a lot sparser?
+
+"""
+
 def iptsd_dumper(out_path, data_records):
     metadata = Metadata.from_dump()
     device_info = DeviceInfo.from_dump()
@@ -324,12 +377,30 @@ if __name__ == '__main__':
     data_records = []
     for r in records:
         # print(r)
-        data_records.append(r.data)
+        # data_records.append(r.data)
         i += 1
-        print(len(r.data))
-        print(hexdump(r.data))
+        if (len(r.data) < 1820):
+            continue
+        chunk1 = r.data[0:1820]
+        data_records.append(chunk1)
+        # print(len(r.data))
+        # if (len(r.data) < 20):
+            # print(hexdump(r.data))
         # if i > 2:
             # break;
+
+    last = records[-1]
+    print(len(last.data))
+    print(hexdump(last.data))
+
+    chunk_1_len = 1820
+    chunk1 = last.data[0:1820]
+    print("Chunk 1:")
+    print(hexdump(chunk1))
+    rem = last.data[1820:]
+    print("rem:")
+    print(hexdump(rem))
+    
 
     iptsd_dumper("/tmp/out.bin", data_records)
 
