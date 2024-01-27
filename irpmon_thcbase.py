@@ -352,6 +352,54 @@ Lengths look like:
 
 Data from irpmon is a lot sparser?
 
+    plt.xlim([0, 68])
+    plt.ylim([0, 44])
+
+are these even the same protocol packets? Or is this some preparsed version??
+
+
+imhex;
+
+#define  IPTS_DFT_NUM_COMPONENTS 9
+
+struct  ipts_pen_dft_window {
+	u32 timestamp; // counting at approx 8MHz
+	u8 num_rows;
+	u8 seq_num;
+	u8 reserved[3]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+	u8 data_type;
+	u8 reserved2[2]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+};
+
+struct ipts_pen_dft_window_row {
+	u32 frequency;
+	u32 magnitude;
+	s16 real[IPTS_DFT_NUM_COMPONENTS]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+	s16 imag[IPTS_DFT_NUM_COMPONENTS]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+	s8 first;
+	s8 last;
+	s8 mid;
+	s8 zero;
+};
+
+struct thing {
+    u8 type @ 0x0;
+    u16 length @ 0x03;
+    u16 remainder @ 0x0a;
+    u16 something @ 0x12;
+    ipts_pen_dft_window z @ 0x106;
+    ipts_pen_dft_window_row window[9] @ 0x8a0;
+};
+
+
+
+
+
+thing foo @ 0x00;
+thing bar @ 0x1d40;
+
+
+
 """
 
 def iptsd_dumper(out_path, data_records):
@@ -368,6 +416,12 @@ def iptsd_dumper(out_path, data_records):
             f.write(bytearray(r))
             f.write(bytearray([0] * (device_info.buffer_size - size)))
         
+def concat(out_path, data_records):
+    with open(out_path, "wb") as f:
+        for r in data_records:
+            f.write(bytearray(r))
+        
+
 
 if __name__ == '__main__':
     in_file = sys.argv[1]
@@ -399,17 +453,17 @@ if __name__ == '__main__':
         # print(r)
         # data_records.append(r.data)
         i += 1
-        if (len(r.data) < 1820):
-            continue
-        chunk1 = r.data[0:1820]
-        data_records.append(chunk1)
-        # print(len(r.data))
+        # if (len(r.data) < 1820):
+            # continue
+        # chunk1 = r.data[0:1820]
+        data_records.append(r.data)
+        print(len(r.data))
         # if (len(r.data) < 20):
             # print(hexdump(r.data))
         # if i > 2:
             # break;
 
-    last = split_records[-1]
+    request, last = split_records[-1]
     print(len(last.data))
     print(hexdump(last.data))
 
@@ -423,6 +477,7 @@ if __name__ == '__main__':
     
 
     iptsd_dumper("/tmp/out.bin", data_records)
+    concat("/tmp/concat.bin", data_records)
 
     # z = Metadata.from_dump()
     # print(z.buffer_size) # weird number!
