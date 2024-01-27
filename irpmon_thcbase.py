@@ -358,8 +358,7 @@ Data from irpmon is a lot sparser?
 are these even the same protocol packets? Or is this some preparsed version??
 
 
-imhex;
-
+imhex, for concat mid;
 #define  IPTS_DFT_NUM_COMPONENTS 9
 
 struct  ipts_pen_dft_window {
@@ -393,11 +392,50 @@ struct thing {
 
 
 
+// This looks reasonable, is a button.
+ipts_pen_dft_window winzz @ 0x1e51;
+ipts_pen_dft_window_row zz[4] @ 0x01e5d;
 
 
-thing foo @ 0x00;
-thing bar @ 0x1d40;
+// no timestamp, unknown data type, but frequencies look fine.
+ipts_pen_dft_window winzx @ 0x7911;;
+ipts_pen_dft_window_row zx[9] @ 0x791d;
 
+
+
+ipts_pen_dft_window_row zzz[9] @ 0x17f;
+
+
+requests;
+#include <std/sys.pat>
+
+struct things {
+  u8 a;
+  u8 x_always_8e;
+  u8 x_always_a5;
+  u8 seq;
+  u8 other[8];
+  u8 zz;
+  u16 something;
+  u8 zero;
+};
+
+std::assert(sizeof(things) == 16, "incorrect size");
+
+things foo[1000] @ 0x00;
+
+
+
+ex from diag;
+"payload":{"rows":8,"type":6,"x":[
+    {"freq":1187205120,"mag":250090,"first":9,"last":17,"mid":13,"zero":0,"iq":[[-3,-2],[0,-5],[3,3],[60,95],[257,429],[3,10],[-13,-15],[-10,-14],[-10,-12]]},
+    {"freq":1210480000,"mag":497825,"first":9,"last":17,"mid":13,"zero":0,"iq":[[96,76],[159,134],[279,238],[435,373],[535,460],[677,589],[438,378],[232,200],[121,102]]},
+    {"freq":1211061824,"mag":5,"first":9,"last":17,"mid":13,"zero":0,"iq":[[1,-1],[-5,0],[-4,0],[-5,1],[-2,-1],[0,0],[4,-1],[3,0],[4,1]]},
+    {"freq":1186805248,"mag":26,"first":9,"last":17,"mid":13,"zero":0,"iq":[[-1,1],[0,-1],[1,-1],[0,0],[1,5],[1,1],[1,3],[1,1],[0,3]]},
+    {"freq":1187604992,"mag":41,"first":9,"last":17,"mid":13,"zero":0,"iq":[[2,0],[5,1],[5,1],[5,0],[4,-5],[4,-1],[3,-2],[3,-1],[2,-3]]},
+    {"freq":1210480000,"mag":9,"first":9,"last":17,"mid":13,"zero":0,"iq":[[2,-2],[2,-2],[2,-3],[2,-1],[3,0],[1,-3],[3,-2],[3,-2],[0,-2]]},
+    {"freq":1211061824,"mag":45,"first":9,"last":17,"mid":13,"zero":0,"iq":[[-4,-9],[-2,-7],[-2,-6],[-2,-6],[-3,-6],[1,-5],[0,-5],[3,-5],[1,-4]]},
+    {"freq":1210911744,"mag":128,"first":9,"last":17,"mid":13,"zero":0,"iq":[[2,-2],[3,-1],[3,-1],[1,-2],[-8,-8],[3,-2],[5,-1],[4,-1],[4,-1]]}
 
 
 """
@@ -417,9 +455,12 @@ def iptsd_dumper(out_path, data_records):
             f.write(bytearray([0] * (device_info.buffer_size - size)))
         
 def concat(out_path, data_records):
+    full = bytearray([])
     with open(out_path, "wb") as f:
         for r in data_records:
             f.write(bytearray(r))
+            full += bytearray(r)
+    return full
         
 
 
@@ -445,10 +486,13 @@ if __name__ == '__main__':
             
 
     i = 0
+
+    request_records = []
     data_records = []
     for request, r in split_records:
         if request:
             print(r)
+            request_records.append(r.data)
             continue
         # print(r)
         # data_records.append(r.data)
@@ -456,8 +500,9 @@ if __name__ == '__main__':
         # if (len(r.data) < 1820):
             # continue
         # chunk1 = r.data[0:1820]
-        data_records.append(r.data)
         print(len(r.data))
+        print(hexdump(r.data[0:100]))
+        data_records.append(r.data)
         # if (len(r.data) < 20):
             # print(hexdump(r.data))
         # if i > 2:
@@ -477,7 +522,18 @@ if __name__ == '__main__':
     
 
     iptsd_dumper("/tmp/out.bin", data_records)
-    concat("/tmp/concat.bin", data_records)
+    full = concat("/tmp/concat.bin", data_records)
+    requests = concat("/tmp/request_records.bin", request_records)
+
+    for i in range(len(full) - 4):
+        (v, ) = struct.unpack_from("<I", full, i)
+        #if (v == 1210480000):
+        #    print(f"Found {v} at 0x{i:0>8x}")
+
+    # let also output the middle chunks
+    mid = int(len(data_records)/2)
+    mid = concat("/tmp/concat_mid.bin", data_records[mid: mid+5])
+    
 
     # z = Metadata.from_dump()
     # print(z.buffer_size) # weird number!
