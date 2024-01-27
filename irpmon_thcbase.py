@@ -209,6 +209,27 @@ struct [[gnu::packed]] DeviceInfo {
 };
 
 From a dump, start is; 5E 04 52 0C 00 00 00 00 3F 1D 00 00 00 00 00 00
+
+from kernel;
+desc.h
+17:#define IPTS_HID_REPORT_DATA_SIZE 7485
+That's really close to 7488
+
+/*
+ * Synthesize a HID report matching the devices that natively send HID reports
+ */
+temp[0] = IPTS_HID_REPORT_DATA;
+
+frame = (struct ipts_hid_header *)&temp[3];
+frame->type = IPTS_HID_FRAME_TYPE_RAW;
+frame->size = header->size + sizeof(*frame);
+
+memcpy(frame->data, header->data, header->size);
+
+return hid_input_report(ipts->hid, HID_INPUT_REPORT, temp, IPTS_HID_REPORT_DATA_SIZE, 1);
+
+Aha. so the first three bytes are 'bad'.
+
 """
 
 # Convenience mixin to allow construction of struct from a byte like object.
