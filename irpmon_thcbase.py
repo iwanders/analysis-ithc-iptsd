@@ -234,6 +234,8 @@ Yes!
 
 For concat mid;
 
+
+
 #define IPTS_DFT_NUM_COMPONENTS 9
 #define i16 s16
 #define i8 s8
@@ -292,10 +294,24 @@ struct combined {
 };
 
 combined first[7] @ 0x1d;
-// from here it all breaks down?
-//combined bar[1] @ 0x369;
-
 combined second[7] @ 0xa1d;
+combined third[7] @ 0x2049;
+
+combined perhaps_something[1] @ 0x1e4d;
+
+
+struct overarching {
+ u32 outer_size;
+ u8 pad[3];
+ u32 inner_size;
+ u8 pad2[7];
+ //u8 data[inner_size - 4];
+ combined d[9];
+};
+
+//overarching base @ 0x03;
+overarching base @ 0x3a83;
+
 
 
 
@@ -558,6 +574,13 @@ def concat(out_path, data_records):
             full += bytearray(r)
     return full
         
+def chunk_writer(out_path, data_records):
+    full = bytearray([])
+    for i, d in enumerate(data_records):
+        with open(out_path + f"_{i}.bin", "wb") as f:
+            f.write(bytearray(d))
+    return full
+        
 
 
 if __name__ == '__main__':
@@ -619,6 +642,7 @@ if __name__ == '__main__':
 
     iptsd_dumper("/tmp/out.bin", data_records)
     full = concat("/tmp/concat.bin", data_records)
+    chunk_writer("/tmp/chunks/chunk", data_records)
     requests = concat("/tmp/request_records.bin", request_records)
 
     for i in range(len(full) - 4):
