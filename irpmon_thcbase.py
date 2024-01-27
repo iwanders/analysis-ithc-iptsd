@@ -230,6 +230,34 @@ return hid_input_report(ipts->hid, HID_INPUT_REPORT, temp, IPTS_HID_REPORT_DATA_
 
 Aha. so the first three bytes are 'bad'.
 
+Yes!
+
+For concat mid;
+
+
+struct ipts_hid_frame {
+	u32 size;
+	u8 reserved1;
+	u8 type;
+	u8 reserved2;
+};
+
+
+struct  ipts_report {
+	u8 type;
+	u8 flags;
+	u16 size;
+};
+
+
+ipts_hid_frame zz @ (0x03 + 1374);
+ipts_report zrep @ (0x03 + sizeof(ipts_hid_frame));
+ipts_report zrzep @ (0x03 + 26);
+ipts_report x @ (addressof(zrzep) +  sizeof(zrzep) + zrzep.size);
+ipts_report y @ (addressof(x) +  sizeof(x) + x.size);
+ipts_report z @ (addressof(y) +  sizeof(y) + y.size);
+
+
 """
 
 # Convenience mixin to allow construction of struct from a byte like object.
