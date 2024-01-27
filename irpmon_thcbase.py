@@ -471,83 +471,98 @@ are these even the same protocol packets? Or is this some preparsed version??
 
 
 imhex, for concat mid;
-#define  IPTS_DFT_NUM_COMPONENTS 9
 
-struct  ipts_pen_dft_window {
+#define IPTS_DFT_NUM_COMPONENTS 9
+#define i16 s16
+#define i8 s8
+
+struct ipts_hid_frame {
+	u32 size;
+	u8 reserved1;
+	u8 type;
+	u8 reserved2;
+};
+
+
+struct  ipts_report {
+	u8 type;
+	u8 flags;
+	u16 size;
+};
+
+
+u8 IPTS_DFT_ID_POSITION = 6;
+u8 IPTS_DFT_ID_POSITION2 = 7;
+u8 IPTS_DFT_ID_BUTTON   = 9;
+u8 IPTS_DFT_ID_PRESSURE = 11;
+
+struct ipts_pen_dft_window_row {
+	u32 frequency;
+	u32 magnitude;
+	i16 real[IPTS_DFT_NUM_COMPONENTS]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+	i16 imag[IPTS_DFT_NUM_COMPONENTS]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+	i8 first;
+	i8 last;
+	i8 mid;
+	i8 zero;
+};
+
+struct ipts_pen_dft_window {
 	u32 timestamp; // counting at approx 8MHz
 	u8 num_rows;
 	u8 seq_num;
 	u8 reserved[3]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
 	u8 data_type;
 	u8 reserved2[2]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
-};
-
-struct ipts_pen_dft_window_row {
-	u32 frequency;
-	u32 magnitude;
-	s16 real[IPTS_DFT_NUM_COMPONENTS]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
-	s16 imag[IPTS_DFT_NUM_COMPONENTS]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
-	s8 first;
-	s8 last;
-	s8 mid;
-	s8 zero;
-};
-
-struct thing {
-    u8 type @ 0x0;
-    u16 length @ 0x03;
-    u16 remainder @ 0x0a;
-    u16 something @ 0x12;
-    ipts_pen_dft_window z @ 0x106;
-    ipts_pen_dft_window_row window[9] @ 0x8a0;
+	ipts_pen_dft_window_row x[num_rows];
+		ipts_pen_dft_window_row y[num_rows];
 };
 
 
-
-// This looks reasonable, is a button.
-ipts_pen_dft_window winzz @ 0x1e51;
-ipts_pen_dft_window_row zz[4] @ 0x01e5d;
-
-
-// no timestamp, unknown data type, but frequencies look fine.
-ipts_pen_dft_window winzx @ 0x7911;;
-ipts_pen_dft_window_row zx[9] @ 0x791d;
-
-
-
-ipts_pen_dft_window_row zzz[9] @ 0x17f;
-
-
-requests;
-#include <std/sys.pat>
-
-struct things {
-  u8 a;
-  u8 x_always_8e;
-  u8 x_always_a5;
-  u8 seq;
-  u8 other[8];
-  u8 zz;
-  u16 something;
-  u8 zero;
+struct combined {
+    ipts_report header;
+    
+      match (header.type, header.size) {
+        (0x5c, _): ipts_pen_dft_window window;
+        (0xff, _): u32 end;
+        (_, _): u8 data[header.size];
+      }    
 };
 
-std::assert(sizeof(things) == 16, "incorrect size");
+combined first[7] @ 0x1d;
+combined second[7] @ 0xa1d;
+combined third[7] @ 0x2049;
 
-things foo[1000] @ 0x00;
+combined perhaps_something[1] @ 0x1e4d;
+
+
+struct overarching {
+ u32 outer_size;
+ u8 pad[3];
+ u32 inner_size;
+ u8 pad2[7];
+ //u8 data[inner_size - 4];
+ combined d[9];
+};
+
+//overarching base @ 0x03;
+overarching base @ 0x3a83;
 
 
 
-ex from diag;
-"payload":{"rows":8,"type":6,"x":[
-    {"freq":1187205120,"mag":250090,"first":9,"last":17,"mid":13,"zero":0,"iq":[[-3,-2],[0,-5],[3,3],[60,95],[257,429],[3,10],[-13,-15],[-10,-14],[-10,-12]]},
-    {"freq":1210480000,"mag":497825,"first":9,"last":17,"mid":13,"zero":0,"iq":[[96,76],[159,134],[279,238],[435,373],[535,460],[677,589],[438,378],[232,200],[121,102]]},
-    {"freq":1211061824,"mag":5,"first":9,"last":17,"mid":13,"zero":0,"iq":[[1,-1],[-5,0],[-4,0],[-5,1],[-2,-1],[0,0],[4,-1],[3,0],[4,1]]},
-    {"freq":1186805248,"mag":26,"first":9,"last":17,"mid":13,"zero":0,"iq":[[-1,1],[0,-1],[1,-1],[0,0],[1,5],[1,1],[1,3],[1,1],[0,3]]},
-    {"freq":1187604992,"mag":41,"first":9,"last":17,"mid":13,"zero":0,"iq":[[2,0],[5,1],[5,1],[5,0],[4,-5],[4,-1],[3,-2],[3,-1],[2,-3]]},
-    {"freq":1210480000,"mag":9,"first":9,"last":17,"mid":13,"zero":0,"iq":[[2,-2],[2,-2],[2,-3],[2,-1],[3,0],[1,-3],[3,-2],[3,-2],[0,-2]]},
-    {"freq":1211061824,"mag":45,"first":9,"last":17,"mid":13,"zero":0,"iq":[[-4,-9],[-2,-7],[-2,-6],[-2,-6],[-3,-6],[1,-5],[0,-5],[3,-5],[1,-4]]},
-    {"freq":1210911744,"mag":128,"first":9,"last":17,"mid":13,"zero":0,"iq":[[2,-2],[3,-1],[3,-1],[1,-2],[-8,-8],[3,-2],[5,-1],[4,-1],[4,-1]]}
+// for chunk 1390;
+
+combined first[7] @ 0x1d;
+combined zz[3] @ 0xa1d;
+
+
+// Chunk 1391;
+combined first[16] @ 0x1d;
+
+// chunk 1392;
+
+combined first[8] @ 0x1d;
+combined zz[3] @ 0xa1d;
 
 
 """
@@ -652,6 +667,7 @@ if __name__ == '__main__':
 
     # let also output the middle chunks
     mid = int(len(data_records)/2)
+    print(mid)
     mid = concat("/tmp/concat_mid.bin", data_records[mid: mid+5])
     
 
