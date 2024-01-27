@@ -233,7 +233,6 @@ Aha. so the first three bytes are 'bad'.
 Yes!
 
 For concat mid;
-
 #define IPTS_DFT_NUM_COMPONENTS 9
 #define i16 s16
 #define i8 s8
@@ -253,6 +252,10 @@ struct  ipts_report {
 };
 
 
+u8 IPTS_DFT_ID_POSITION = 6;
+u8 IPTS_DFT_ID_POSITION2 = 7;
+u8 IPTS_DFT_ID_BUTTON   = 9;
+u8 IPTS_DFT_ID_PRESSURE = 11;
 
 struct ipts_pen_dft_window_row {
 	u32 frequency;
@@ -272,7 +275,8 @@ struct ipts_pen_dft_window {
 	u8 reserved[3]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
 	u8 data_type;
 	u8 reserved2[2]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
-	ipts_pen_dft_window_row rows[num_rows];
+	ipts_pen_dft_window_row x[num_rows];
+		ipts_pen_dft_window_row y[num_rows];
 };
 
 
@@ -286,7 +290,13 @@ struct combined {
     
 };
 
-combined foo[5] @ 0x1d;
+combined foo[7] @ 0x1d;
+// from here it all breaks down?
+//combined bar[1] @ 0x369;
+
+//ipts_pen_dft_window w2 @ 0x377;
+
+
 
 
 
