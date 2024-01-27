@@ -234,7 +234,9 @@ Yes!
 
 For concat mid;
 
-
+#define IPTS_DFT_NUM_COMPONENTS 9
+#define i16 s16
+#define i8 s8
 
 struct ipts_hid_frame {
 	u32 size;
@@ -250,12 +252,43 @@ struct  ipts_report {
 	u16 size;
 };
 
-struct combined {
-    ipts_report header;
-    u8 data[header.size];
+
+
+struct ipts_pen_dft_window_row {
+	u32 frequency;
+	u32 magnitude;
+	i16 real[IPTS_DFT_NUM_COMPONENTS]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+	i16 imag[IPTS_DFT_NUM_COMPONENTS]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+	i8 first;
+	i8 last;
+	i8 mid;
+	i8 zero;
 };
 
-combined foo[7] @ 0x1d;
+struct ipts_pen_dft_window {
+	u32 timestamp; // counting at approx 8MHz
+	u8 num_rows;
+	u8 seq_num;
+	u8 reserved[3]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+	u8 data_type;
+	u8 reserved2[2]; // NOLINT(modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+	ipts_pen_dft_window_row rows[num_rows];
+};
+
+
+struct combined {
+    ipts_report header;
+    
+      match (header.type, header.size) {
+        (0x5c, _): ipts_pen_dft_window window;
+        (_, _): u8 data[header.size];
+      }
+    
+};
+
+combined foo[5] @ 0x1d;
+
+
 
 """
 
