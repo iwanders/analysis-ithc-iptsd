@@ -553,8 +553,13 @@ overarching base @ 0x3a83;
 // for chunk 1390;
 
 combined first[7] @ 0x1d;
-combined zz[3] @ 0xa1d;
+// Something here, that looks like bad memory??
+ipts_pen_dft_window_row first_rows[4] @ 0x5f1;
+ipts_pen_dft_window_row zzz[16] @ 0x6b1;
+combined after_zzz[3] @ 0x09b1;
 
+// this is nice adjacent
+combined zz[3] @ 0xa1d;
 
 // Chunk 1391;
 combined first[16] @ 0x1d;
@@ -564,6 +569,21 @@ combined first[16] @ 0x1d;
 combined first[8] @ 0x1d;
 combined zz[3] @ 0xa1d;
 
+
+Analysing timestamps:
+chunk 1390
+timestamp: 460979066
+timestamp: 460965579
+
+chunk 1391
+timestamp: 460976650
+
+chunk 1392
+timestamp: 460983762
+timestamp: 460965579
+Ah yes, and this matches data from chunk 1390
+
+Does show that the second blob is junk, it's duplicated between chunk 1390 and 1392.
 
 """
 
