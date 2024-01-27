@@ -235,6 +235,7 @@ Yes!
 For concat mid;
 
 
+
 struct ipts_hid_frame {
 	u32 size;
 	u8 reserved1;
@@ -249,14 +250,12 @@ struct  ipts_report {
 	u16 size;
 };
 
+struct combined {
+    ipts_report header;
+    u8 data[header.size];
+};
 
-ipts_hid_frame zz @ (0x03 + 1374);
-ipts_report zrep @ (0x03 + sizeof(ipts_hid_frame));
-ipts_report zrzep @ (0x03 + 26);
-ipts_report x @ (addressof(zrzep) +  sizeof(zrzep) + zrzep.size);
-ipts_report y @ (addressof(x) +  sizeof(x) + x.size);
-ipts_report z @ (addressof(y) +  sizeof(y) + y.size);
-
+combined foo[7] @ 0x1d;
 
 """
 
