@@ -233,6 +233,7 @@ Aha. so the first three bytes are 'bad'.
 Yes!
 
 For concat mid;
+
 #define IPTS_DFT_NUM_COMPONENTS 9
 #define i16 s16
 #define i8 s8
@@ -290,11 +291,15 @@ struct combined {
     
 };
 
-combined foo[7] @ 0x1d;
+combined first[7] @ 0x1d;
 // from here it all breaks down?
 //combined bar[1] @ 0x369;
 
-//ipts_pen_dft_window w2 @ 0x377;
+combined second[7] @ 0xa1d;
+
+
+
+
 
 
 
