@@ -671,18 +671,56 @@ GREEN = "\033[0;32m"
 RESET = "\033[0m"
 def run_print_setup(args):
     records = load_file(args.in_file)
+    prev_data = None
     # data = discard_outgoing(records)
+
+    data_from_0x50 = bytearray([])
     for i, r in enumerate(records):
         print()
         print(discard_record_data(r))
+
+        first = r.data[0]
+
         type = f"{RED}REQUEST{RESET}" if r.requestor_mode == Mode.UserMode else f"{GREEN}response{RESET}"
-        print(f"{type} with {len(r.data)} data, first byte: 0x{r.data[0]:0>2x}")
-        if r.data[0] == 0x65 and len(r.data) == 7488:
-            continue
-        print(hexdump(r.data))
+        print(f"{type} with {len(r.data)} data, first byte: 0x{first:0>2x}")
+        # if r.data[0] == 0x65 and len(r.data) == 7488:
+            # continue
+        if (prev_data == r.data):
+            print("Duplicate data with prior!")
+        else:
+            print(hexdump(r.data))
+        
+        if first == 0x50:
+            # data_from_0x50 += bytearray(r.data)
+            print(" wide array: " + "".join(chr(z) for z in r.data[::2]))
+
+        prev_data = r.data
         if i > 75:
             break;
 
+
+"""
+Irp(index=55, irp_id=2751, function=<Function.InternalDeviceControl: 9>, time='2024-01-28 6:29:53 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660409934656, data=[], previous_mode=<Mode.UserMode: 2>, requestor_mode=<Mode.UserMode: 2>)
+REQUEST with 120 data, first byte: 0x06
+06 77 00 00 00 00 00 00 70 00 00 00 00 02 01 2e 00 00 00 44 00 00 00 fd 6a 00 00 53 47 00 00 01 41 65 cc 43 00 00 00 00 00 00 00 00 00 00 00 00 b6 e0 ca 43 00 00 00 00 00 00 32 43 00 00 36 43 
+00 00 34 43 00 00 80 3f 00 00 32 43 00 00 36 43 00 00 34 43 00 00 80 3f 00 00 b4 42 00 00 2b 43 00 00 c8 42 00 00 a0 41 00 00 2c 43 00 00 31 43 00 00 2f 43 00 00 00 40 
+None
+
+^ This could be frequencies.
+1212713792
+1127612416
+1127481344
+1065353216
+1127612416
+
+
+Irp(index=25, irp_id=172, function=<Function.PnP: 3>, time='2024-01-28 6:29:45 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660298777472, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 292 data, first byte: 0x50
+
+PCI\VEN_8086&DEV_51D0&SUBSYS_00641414&REV_01
+
+Heh.
+"""
 
 def run_print_requests(args):
     records = load_file(args.in_file)
