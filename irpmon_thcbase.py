@@ -158,7 +158,10 @@ def parse_log_file(file, target_driver):
 
     return records
 
-
+def discard_record_data(d):
+    z = d._asdict()
+    z["data"] = []
+    return Irp(**z)
 
 # iptsd binary format;
 """
@@ -641,6 +644,7 @@ def load_file(in_file):
             pickle.dump(records, f)
     return records
 
+
 def discard_outgoing(records):
     split_records = []
     for r in records:
@@ -662,10 +666,41 @@ def run_convert(args):
     data = discard_outgoing(records)
     iptsd_dumper(args.out_file, data_record_truncator(filter_iptsd_frames(data)))
 
+RED = "\033[0;31m"
+GREEN = "\033[0;32m"
+RESET = "\033[0m"
+def run_print_setup(args):
+    records = load_file(args.in_file)
+    # data = discard_outgoing(records)
+    for i, r in enumerate(records):
+        print()
+        print(discard_record_data(r))
+        type = f"{RED}REQUEST{RESET}" if r.requestor_mode == Mode.UserMode else f"{GREEN}response{RESET}"
+        print(f"{type} with {len(r.data)} data, first byte: 0x{r.data[0]:0>2x}")
+        if r.data[0] == 0x65 and len(r.data) == 7488:
+            continue
+        print(hexdump(r.data))
+        if i > 75:
+            break;
+
+
+def run_print_requests(args):
+    records = load_file(args.in_file)
+    # data = discard_outgoing(records)
+    for i, r in enumerate(records):
+        if r.requestor_mode != Mode.UserMode:
+            continue;
+        print()
+        print(discard_record_data(r))
+        type = f"{RED}REQUEST{RESET}" if r.requestor_mode == Mode.UserMode else f"{GREEN}response{RESET}"
+        print(f"{type} with {len(r.data)} data, first byte: 0x{r.data[0]:0>2x}")
+        if r.data[0] == 0x65 and len(r.data) == 7488:
+            continue
+        print(hexdump(r.data))
+
 def run_things(args):
     records = load_file(args.in_file)
     data = discard_outgoing(records)
-
 
     # chunk_writer("/tmp/chunks/chunk", data_records)
     # iptsd_dumper("/tmp/out.bin", data_record_truncator(filter_iptsd_frames(data_records)))
@@ -702,6 +737,12 @@ if __name__ == '__main__':
 
     things_parser = subparser_with_default('things')
     things_parser.set_defaults(func=run_things)
+
+    print_setup = subparser_with_default('print_setup')
+    print_setup.set_defaults(func=run_print_setup)
+
+    print_requests = subparser_with_default('print_requests')
+    print_requests.set_defaults(func=run_print_requests)
 
 
 
