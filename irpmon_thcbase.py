@@ -10,6 +10,7 @@ import ctypes
 import struct
 import pickle
 import os
+import argparse
 
 """
 https://github.com/search?q=repo%3AMartinDrab%2FIRPMon%20DataStripThreshold&type=code
@@ -626,11 +627,7 @@ def chunk_writer(out_path, data_records):
     return full
         
 
-
-if __name__ == '__main__':
-    in_file = sys.argv[1]
-
-
+def load_file(in_file):
     cache_file = os.path.join("/tmp/", os.path.abspath(in_file).replace("/", "_").replace(".bin.gz", ".pickle"))
     cache_enabled = True
     if os.path.isfile(cache_file) and cache_enabled:
@@ -642,7 +639,9 @@ if __name__ == '__main__':
             records = parse_log_file(codecs.iterdecode(f, encoding='utf-8', errors='ignore'), target_driver="\Driver\IntelTHCBase")
         with open(cache_file, "wb") as f:
             pickle.dump(records, f)
+    return records
 
+def discard_outgoing(records):
     split_records = []
     for r in records:
         request = r.requestor_mode == Mode.UserMode
@@ -655,10 +654,22 @@ if __name__ == '__main__':
             request_records.append(r.data)
             continue
         data_records.append(r.data)
+    return data_records
+    
+
+def run_convert(args):
+    records = load_file(args.in_file)
+    data = discard_outgoing(records)
+    iptsd_dumper(args.out_file, data_record_truncator(filter_iptsd_frames(data)))
+
+def run_things(args):
+    records = load_file(args.in_file)
+    data = discard_outgoing(records)
+
 
     # chunk_writer("/tmp/chunks/chunk", data_records)
-    iptsd_dumper("/tmp/out.bin", data_record_truncator(filter_iptsd_frames(data_records)))
-    full = concat("/tmp/concat.bin", data_records)
+    # iptsd_dumper("/tmp/out.bin", data_record_truncator(filter_iptsd_frames(data_records)))
+    # full = concat("/tmp/concat.bin", data_records)
     requests = concat("/tmp/request_records.bin", request_records)
 
     for i in range(len(full) - 4):
@@ -670,9 +681,33 @@ if __name__ == '__main__':
     mid = int(len(data_records)/2)
     print(mid)
     mid = concat("/tmp/concat_mid.bin", data_records[mid: mid+5])
+
     
 
-    # z = Metadata.from_dump()
-    # print(z.buffer_size) # weird number!
-    # print(bytes(z))
-    # print(len(bytes(Metadata())))
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description="irpmontool")
+    subparsers = parser.add_subparsers(dest="command")
+
+    def subparser_with_default(name):
+        sub = subparsers.add_parser(name)
+        sub.add_argument("in_file", help="The file to read from.")
+        return sub
+
+    convert_parser = subparser_with_default('convert')
+    convert_parser.add_argument("out_file", help="Output file to write to, default: %(default)s", default="/tmp/out.bin", nargs="?")
+    convert_parser.set_defaults(func=run_convert)
+
+
+
+    things_parser = subparser_with_default('things')
+    things_parser.set_defaults(func=run_things)
+
+
+
+    args = parser.parse_args()
+    if (args.command is None):
+        parser.print_help()
+        parser.exit()
+
+    args.func(args)
