@@ -538,9 +538,9 @@ struct ipts_full_metadata {
 
 struct Block<auto Size> {
   u64 real_size;
-  //u8 data[Size];
+  u8 data[real_size];
+  u8 pad[Size - real_size];
 };
-
 
 struct IptsDump {
     DeviceInfo info;
@@ -548,7 +548,7 @@ struct IptsDump {
     if (has_metadata != 0) {
       ipts_full_metadata metadata;
     }
-    Block<info.buffer_size> blocks[1];
+    Block<info.buffer_size> blocks[43];
 };
 
 IptsDump dump @ 0x0;
@@ -560,8 +560,28 @@ struct iptsblock {
 
 //iptsblock a[1] @ 0x94;
 
-
 """
+
+def data_record_truncator(data_records):
+    # peek at the data, truncate appropriately.
+    z = []
+    for i, d in enumerate(data_records):
+        if d[0] == 0x0c:
+            z.append(d[0:1820])
+        elif d[0] == 0x0b:
+            z.append(d[0:1540])
+        elif d[0] == 0x6e:
+            z.append(d[0:1540]) # MADE UP!
+        elif d[0] == 0x07:
+            z.append(d[0:4320]) # MADE UP!
+        elif d[0] == 0x0d:
+            z.append(d[0:2000])
+        elif d[0] == 0x1a:
+            z.append(d[0:4340])
+        else:
+            print(hexdump(d))
+            raise RuntimeError(f"Unknown truncation size for type {d[0]:0>2x} at index {i}");
+    return z
 
 def iptsd_dumper(out_path, data_records):
     metadata = Metadata.from_dump()
@@ -651,9 +671,9 @@ if __name__ == '__main__':
     print(hexdump(rem))
     
 
-    iptsd_dumper("/tmp/out.bin", data_records)
+    # chunk_writer("/tmp/chunks/chunk", data_records)
+    iptsd_dumper("/tmp/out.bin", data_record_truncator(data_records))
     full = concat("/tmp/concat.bin", data_records)
-    chunk_writer("/tmp/chunks/chunk", data_records)
     requests = concat("/tmp/request_records.bin", request_records)
 
     for i in range(len(full) - 4):
