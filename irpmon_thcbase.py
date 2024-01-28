@@ -84,6 +84,7 @@ Status = Enum('Status', [
     'STATUS_NOT_SUPPORTED',
     'STATUS_PENDING',
     'STATUS_CANCELLED',
+    'STATUS_INVALID_DEVICE_REQUEST',
     'STATUS_TIMEOUT'])
 
 
@@ -578,10 +579,22 @@ def data_record_truncator(data_records):
             z.append(d[0:2000])
         elif d[0] == 0x1a:
             z.append(d[0:4340])
+        # And from the boot log, whoa;
+        elif d[0] in (0xa2, 0x40, 0x92, 0x80, 0xfa, 0x09, 0x20, 0x06, 0x50, 0x73, 0x70, 0x65, 0x08, 0x12):
+            z.append(d[:])
         else:
             print(hexdump(d))
             raise RuntimeError(f"Unknown truncation size for type {d[0]:0>2x} at index {i}");
     return z
+
+def filter_iptsd_frames(data_records):
+    accepted = (0x0c, 0x0b, 0x6e, 0x07, 0x0d, 0x1a)
+    z = []
+    for i, d in enumerate(data_records):
+        if d[0] in accepted:
+            z.append(d)
+    return z
+    
 
 def iptsd_dumper(out_path, data_records):
     metadata = Metadata.from_dump()
@@ -617,6 +630,7 @@ def chunk_writer(out_path, data_records):
 if __name__ == '__main__':
     in_file = sys.argv[1]
 
+
     cache_file = os.path.join("/tmp/", os.path.abspath(in_file).replace("/", "_").replace(".bin.gz", ".pickle"))
     cache_enabled = True
     if os.path.isfile(cache_file) and cache_enabled:
@@ -634,45 +648,16 @@ if __name__ == '__main__':
         request = r.requestor_mode == Mode.UserMode
         split_records.append((request, r))
             
-
-    i = 0
-
     request_records = []
     data_records = []
     for request, r in split_records:
         if request:
-            print(r)
             request_records.append(r.data)
             continue
-        # print(r)
-        # data_records.append(r.data)
-        i += 1
-        # if (len(r.data) < 1820):
-            # continue
-        # chunk1 = r.data[0:1820]
-        print(len(r.data))
-        print(hexdump(r.data[0:100]))
         data_records.append(r.data)
-        # if (len(r.data) < 20):
-            # print(hexdump(r.data))
-        # if i > 2:
-            # break;
-
-    request, last = split_records[-1]
-    print(len(last.data))
-    print(hexdump(last.data))
-
-    chunk_1_len = 1820
-    chunk1 = last.data[0:1820]
-    print("Chunk 1:")
-    print(hexdump(chunk1))
-    rem = last.data[1820:]
-    print("rem:")
-    print(hexdump(rem))
-    
 
     # chunk_writer("/tmp/chunks/chunk", data_records)
-    iptsd_dumper("/tmp/out.bin", data_record_truncator(data_records))
+    iptsd_dumper("/tmp/out.bin", data_record_truncator(filter_iptsd_frames(data_records)))
     full = concat("/tmp/concat.bin", data_records)
     requests = concat("/tmp/request_records.bin", request_records)
 

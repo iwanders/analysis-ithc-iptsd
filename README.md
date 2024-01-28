@@ -12,6 +12,18 @@ https://fccid.io/C3K1962
 
 But that only pertains to the BLE device in it.
 
+# IRPMon
+
+Enable logging:
+```
+.\IRPMonc.exe --input=D:\\.\irpmndrv --hook-driver=ICD:\Driver\IntelTHCBase --boot-log=1 --strip-data=0 --save-settings=1
+```
+
+Disable logging:
+
+```
+.\IRPMonc.exe --input=D:\\.\irpmndrv --unhook-driver=\Driver\IntelTHCBase --boot-log=0 --save-settings=1
+```
 
 # Writeup
 
