@@ -35,6 +35,8 @@ class EntryType(Enum):
     IPTS_DFT_ID_POSITION2 = 7
     IPTS_DFT_ID_BUTTON   = 9
     IPTS_DFT_ID_PRESSURE = 11
+    IPTS_DFT_ID_10 = 10
+    IPTS_DFT_ID_8 = 8
     METADATA = 999
     def __lt__(self, o):
         self._value_ < o._value_
@@ -765,7 +767,7 @@ def time_series_frames(frames):
 
 
         for element in (REAL, IMAG):
-            for r in range(min(len(msg.x), 6)):
+            for r in range(min(len(msg.x), 1)):
                 # maxi = get_maxi(msg.x[r])
                 maxi = int(IPTS_DFT_PRESSURE_ROWS / 2)
                 append(f"{comp_to_str(element)}_{element}_{r}", (i, msg.x[r].iq[maxi][element]))
@@ -866,6 +868,7 @@ def compare_scenario(data, interp_1, interp_2, keys):
 if __name__ == "__main__":
     # Metadata(size=MetataSize(rows=46, columns=68, width=27389, height=18259), transform=MetataTransform(xx=408.791, yx=0, tx=0, xy=0, yy=405.756, ty=0))
     default_interpolate = changed_interpolate
+    # default_interpolate = cpp_interpolate_pos
     scenario = test_scenarios.get(sys.argv[1], Scenario(sys.argv[1], max_index=None, interp=default_interpolate))
 
     d = load(scenario.filename)
@@ -886,6 +889,7 @@ if __name__ == "__main__":
     print_kernels = False
     do_on_two_frame = False
     plot_time_series = False
+    do_on_cpp_interpolate = False
 
 
     # do_full = True
@@ -895,6 +899,13 @@ if __name__ == "__main__":
         s = process_single_frame(frames[190], interpolate)
         res["OURMARKER*"] = s["pos_from_pos"]
         show_trajectory(res)
+
+    do_on_cpp_interpolate = True
+    if do_on_cpp_interpolate:
+        res = process_data(d, cpp_interpolate_pos)
+        z = {}
+        z["pos_from_pos"] = res["pos_from_pos"]
+        show_trajectory(z)
 
 
     # do_comparison = True
@@ -907,9 +918,6 @@ if __name__ == "__main__":
         ]
         compare_scenario(d, cpp_interpolate_pos, interpolate, keys)
 
-
-
-
     # do_on_frame = True
     if do_on_frame:
         # print("Frames: ", len(frames))
@@ -917,6 +925,7 @@ if __name__ == "__main__":
         # print(f)
 
         res = do_things_on_frame(f, interpolate)
+
 
     f1_diag_centerchange = 188
     f2_diag_centerchange = f1_diag_centerchange + 1
