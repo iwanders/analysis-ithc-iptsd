@@ -905,6 +905,7 @@ if __name__ == "__main__":
         res = process_data(d, cpp_interpolate_pos)
         z = {}
         z["pos_from_pos"] = res["pos_from_pos"]
+        z["ring_pos_from_pos"] = res["ring_pos_from_pos"]
         show_trajectory(z)
 
 
