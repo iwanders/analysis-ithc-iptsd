@@ -63,6 +63,10 @@ Irp = namedtuple("Irp", [
     "previous_mode",
     # Indicates the execution mode of the original requester of the operation, one of UserMode or KernelMode
     "requestor_mode",
+    # Ioctl value associated with the irp
+    "ioctl",
+    # Irp type, IRP or IRPComp
+    "irp_type",
 ])
 
 Function = Enum('Function', [
@@ -77,6 +81,16 @@ Function = Enum('Function', [
     'InternalDeviceControl',
     'Power',
     ])
+
+IrpType = Enum('IrpType', [
+    'AddDevice',
+    'DeviceDetected',
+    'DriverDetected',
+    'FONameDeleted',
+    'ImageLoad',
+    'IRP',
+    'IRPComp',
+])
 
 Mode = Enum('Mode', ['KernelMode', 'UserMode'])
 
@@ -100,6 +114,8 @@ def parse_log_file(file, target_driver):
     curtime = None
     status = None
     address = None
+    ioctl = None
+    irp_type = None
 
     data = False
     lines = []
@@ -111,12 +127,16 @@ def parse_log_file(file, target_driver):
     for line_nr, line in enumerate(file):
         if line.startswith("ID ="):
             irp_id = int(line.split('=', 1)[1].strip())
+        if line.startswith("IOCTL ="):
+            ioctl = int(line.split('=', 1)[1].strip(), 0)
         elif line.startswith("Major function ="):
             function = Function[line.split('=', 1)[1].strip()]
         elif line.startswith("Previous mode = "):
             previous_mode = Mode[line.split('=', 1)[1].strip()]
         elif line.startswith("Requestor mode = "):
             requestor_mode = Mode[line.split('=', 1)[1].strip()]
+        elif line.startswith("Type = "):
+            irp_type = IrpType[line.split('=', 1)[1].strip()]
         elif line.startswith("IRP address ="):
             irp_address = int(line.split('=', 1)[1].strip(), 0)
         elif line.startswith("Driver name = "):
@@ -147,12 +167,16 @@ def parse_log_file(file, target_driver):
                     address = irp_address,
                     previous_mode = previous_mode,
                     requestor_mode = requestor_mode,
+                    ioctl = ioctl,
+                    irp_type = irp_type,
                     data = bytedata)
                 records.append(record)
 
 
             data = False
             discard = False
+            ioctl = None
+            irp_type = None
             lines = []
             irp_index += 1
 
@@ -644,6 +668,14 @@ def load_file(in_file):
             pickle.dump(records, f)
     return records
 
+def discard_pnp(records):
+    filtered = []
+    for r in records:
+        if r.function == Function.PnP:
+            continue
+        filtered.append(r)
+    return filtered
+    
 
 def discard_outgoing(records):
     split_records = []
@@ -671,6 +703,7 @@ GREEN = "\033[0;32m"
 RESET = "\033[0m"
 def run_print_setup(args):
     records = load_file(args.in_file)
+    records = discard_pnp(records)
     prev_data = None
     # data = discard_outgoing(records)
 
@@ -681,7 +714,8 @@ def run_print_setup(args):
 
         first = r.data[0]
 
-        type = f"{RED}REQUEST{RESET}" if r.requestor_mode == Mode.UserMode else f"{GREEN}response{RESET}"
+        # type = f"{RED}REQUEST{RESET}" if r.requestor_mode == Mode.UserMode else f"{GREEN}response{RESET}"
+        type = f"{RED}REQUEST{RESET}" if r.irp_type == IrpType.IRP else f"{GREEN}response{RESET}"
         print(f"{type} with {len(r.data)} data, first byte: 0x{first:0>2x}")
         # if r.data[0] == 0x65 and len(r.data) == 7488:
             # continue
@@ -730,13 +764,133 @@ Heh.
 
 Irp(index=59, irp_id=2797, function=<Function.InternalDeviceControl: 9>, time='2024-01-28 6:29:53 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660298778288, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
 dimenions, frequency noise, type 7, type 50, type 18, 
+
+
+
+First one:
+Irp(index=0, irp_id=112, function=<Function.PnP: 3>, time='2024-01-28 6:29:44 PM', status=<Status.STATUS_NOT_SUPPORTED: 2>, address=18446694660292750352, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 16 data, first byte: 0xa2
+a2 15 ad ff f8 a6 60 4e 99 c7 2b 92 62 4d dc 25 
+None
+gets: IOSB.Status constant = STATUS_NOT_SUPPORTED
+Data (PnPInterface)
+  Interface type: {FFAD15A2-A6F8-4E60-99C7-2B92624DDC25}
+Payload is just a driver uuid.
+
+Irp(index=1, irp_id=117, function=<Function.PnP: 3>, time='2024-01-28 6:29:44 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660292750352, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 64 data, first byte: 0x40
+40 00 01 00 02 00 00 00 06 00 10 00 ff ff ff ff 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 04 00 00 00 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+None
+
+Data (PnPDevCaps)
+  Version: 1
+  Size: 64
+  DeviceD2: true
+
+PnP types probably not relevant?
+
+Irp(index=2, irp_id=120, function=<Function.PnP: 3>, time='2024-01-28 6:29:44 PM', status=<Status.STATUS_NOT_SUPPORTED: 2>, address=18446694660292750352, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 16 data, first byte: 0x92
+92 4a 15 6c cf aa d0 11 8d 2a 00 a0 c9 06 b2 44 
+None
+gets: IOSB.Status constant = STATUS_NOT_SUPPORTED
+Data (PnPInterface)
+  Interface type: {6C154A92-AACF-11D0-8D2A-00A0C906B244}
+  Interface name: GUID_TRANSLATOR_INTERFACE_STANDARD
+
+Irp(index=3, irp_id=122, function=<Function.PnP: 3>, time='2024-01-28 6:29:44 PM', status=<Status.STATUS_NOT_SUPPORTED: 2>, address=18446694660292750352, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 16 data, first byte: 0x92
+Duplicate data with prior!
+Data (PnPInterface)
+  Interface type: {6C154A92-AACF-11D0-8D2A-00A0C906B244}
+  Interface name: GUID_TRANSLATOR_INTERFACE_STANDARD
+
+Irp(index=4, irp_id=128, function=<Function.PnP: 3>, time='2024-01-28 6:29:45 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660298776656, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 64 data, first byte: 0x40
+40 00 01 00 02 00 00 00 06 00 10 00 ff ff ff ff 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 04 00 00 00 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+None
+Data (PnPDevCaps)
+  Version: 1
+  Size: 64
+  DeviceD2: true
+
+Irp(index=5, irp_id=130, function=<Function.PnP: 3>, time='2024-01-28 6:29:45 PM', status=<Status.STATUS_NOT_SUPPORTED: 2>, address=18446694660298780688, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 16 data, first byte: 0x80
+80 82 6b 49 25 6f d0 11 be af 08 00 2b e2 09 2f 
+None
+  Interface type: {496B8280-6F25-11D0-BEAF-08002BE2092F}
+  Interface name: GUID_BUS_INTERFACE_STANDARD
+
+Irp(index=6, irp_id=131, function=<Function.PnP: 3>, time='2024-01-28 6:29:45 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660298780688, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 64 data, first byte: 0x40
+40 00 01 00 00 00 00 00 b0 34 0a 09 0f d3 ff ff 30 1f 66 09 00 f8 ff ff 20 1f 66 09 00 f8 ff ff e0 b9 6b 09 00 f8 ff ff 20 a5 6b 09 00 f8 ff ff 10 10 66 09 00 f8 ff ff c0 14 66 09 00 f8 ff ff 
+None
+Data (PnPInterface)
+  Size: 64
+  Version: 1
+  Reference: 0xFFFFF80009661F30
+  Dereference: 0xFFFFF80009661F20
+
+Irp(index=7, irp_id=132, function=<Function.PnP: 3>, time='2024-01-28 6:29:45 PM', status=<Status.STATUS_NOT_SUPPORTED: 2>, address=18446694660298780688, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 16 data, first byte: 0xfa
+fa f7 20 b5 5a 8a 40 4e a3 f6 6b e1 e1 62 d9 35 
+None
+  Interface type: {B520F7FA-8A5A-4E40-A3F6-6BE1E162D935}
+  Interface name: GUID_DMA_CACHE_COHERENCY_INTERFACE
+
+Irp(index=8, irp_id=134, function=<Function.PnP: 3>, time='2024-01-28 6:29:45 PM', status=<Status.STATUS_NOT_SUPPORTED: 2>, address=18446694660298780688, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 16 data, first byte: 0x80
+80 82 6b 49 25 6f d0 11 be af 08 00 2b e2 09 2f 
+None
+Data (PnPInterface)
+  Interface type: {496B8280-6F25-11D0-BEAF-08002BE2092F}
+  Interface name: GUID_BUS_INTERFACE_STANDARD
+
+Irp(index=9, irp_id=135, function=<Function.PnP: 3>, time='2024-01-28 6:29:45 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660298780688, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 64 data, first byte: 0x40
+40 00 01 00 00 00 00 00 b0 34 0a 09 0f d3 ff ff 30 1f 66 09 00 f8 ff ff 20 1f 66 09 00 f8 ff ff e0 b9 6b 09 00 f8 ff ff 20 a5 6b 09 00 f8 ff ff 10 10 66 09 00 f8 ff ff c0 14 66 09 00 f8 ff ff 
+None
+Data (PnPInterface)
+  Size: 64
+  Version: 1
+  Reference: 0xFFFFF80009661F30
+  Dereference: 0xFFFFF80009661F20
+
+Irp(index=10, irp_id=136, function=<Function.PnP: 3>, time='2024-01-28 6:29:45 PM', status=<Status.STATUS_NOT_SUPPORTED: 2>, address=18446694660298780688, data=[], previous_mode=<Mode.KernelMode: 1>, requestor_mode=<Mode.KernelMode: 1>)
+response with 16 data, first byte: 0xfa
+fa f7 20 b5 5a 8a 40 4e a3 f6 6b e1 e1 62 d9 35 
+None
+  Interface type: {B520F7FA-8A5A-4E40-A3F6-6BE1E162D935}
+  Interface name: GUID_DMA_CACHE_COHERENCY_INTERFACE
+
+
+Discarding pnp.
+  Hardware ID: PCI\VEN_8086&DEV_51D0&SUBSYS_00641414&REV_01
+  Hardware ID: PCI\VEN_8086&DEV_51D0&SUBSYS_00641414
+  Hardware ID: PCI\VEN_8086&DEV_51D0&CC_090100
+  Hardware ID: PCI\VEN_8086&DEV_51D0&CC_0901
+
+Irp(index=41, irp_id=617, function=<Function.InternalDeviceControl: 9>, time='2024-01-28 6:29:51 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660361669168, data=[], previous_mode=<Mode.UserMode: 2>, requestor_mode=<Mode.KernelMode: 1>, ioctl=720915)
+response with 512 data, first byte: 0x70
+70 00 72 00 65 00 63 00 69 00 73 00 65 00 20 00 74 00 6f 00 75 00 63 00 68 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+Data (Hexer)
+  000:	70 00 72 00 65 00 63 00 69 00 73 00 65 00 20 00	p.r.e.c.i.s.e. .
+  010:	74 00 6f 00 75 00 63 00 68 00 00 00 00 00 00 00	t.o.u.c.h.......
+Requestor PID = 1240
+
+rp(index=53, irp_id=1237, function=<Function.InternalDeviceControl: 9>, time='2024-01-28 6:29:52 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660360480368, data=[], previous_mode=<Mode.UserMode: 2>, requestor_mode=<Mode.KernelMode: 1>, ioctl=720915)
+response with 512 data, first byte: 0x70
+more precise touch.
+
 """
 
 def run_print_requests(args):
     records = load_file(args.in_file)
+    records = discard_pnp(records)
     # data = discard_outgoing(records)
     for i, r in enumerate(records):
-        if r.requestor_mode != Mode.UserMode:
+        # if r.requestor_mode != Mode.UserMode:
+        if r.irp_type != IrpType.IRP:
             continue;
         print()
         print(discard_record_data(r))
@@ -792,6 +946,11 @@ REQUEST with 16 data, first byte: 0x09
 09 8e a5 01 02 00 00 00 00 00 00 00 00 70 17 00 
 
 ...
+Irp(index=145, irp_id=12275, function=<Function.InternalDeviceControl: 9>, time='2024-01-28 6:30:02 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660539001120, data=[], previous_mode=<Mode.UserMode: 2>, requestor_mode=<Mode.UserMode: 2>)
+REQUEST with 16 data, first byte: 0x09
+09 8e a1 00 00 00 00 00 00 00 00 00 00 00 00 00 
+None
+
 
 Irp(index=146, irp_id=12277, function=<Function.InternalDeviceControl: 9>, time='2024-01-28 6:30:02 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660541876512, data=[], previous_mode=<Mode.UserMode: 2>, requestor_mode=<Mode.UserMode: 2>)
 REQUEST with 16 data, first byte: 0x09
