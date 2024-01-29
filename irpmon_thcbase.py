@@ -925,6 +925,7 @@ Irp(index=57, irp_id=2779, function=<Function.InternalDeviceControl: 9>, time='2
 REQUEST with 16 data, first byte: 0x05
 05 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 None
+IPTS does this!; https://github.com/linux-surface/iptsd/blob/405044af279d71352c4b53ad580e0d5af82868e9/src/ipts/device.cpp#L31-L43
 
 Irp(index=69, irp_id=9154, function=<Function.InternalDeviceControl: 9>, time='2024-01-28 6:29:58 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660530637152, data=[], previous_mode=<Mode.UserMode: 2>, requestor_mode=<Mode.UserMode: 2>)
 REQUEST with 2 data, first byte: 0x70
