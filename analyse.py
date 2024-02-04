@@ -841,6 +841,8 @@ def make_frames(d):
     frame = { }
     for z in d:
         frame[z.type] = z.payload
+        # if z.type == EntryType.IPTS_DFT_ID_BUTTON:
+        # if z.type == EntryType.IPTS_DFT_ID_POSITION2:
         if z.type == EntryType.IPTS_DFT_ID_POSITION:
         # if z.type == EntryType.IPTS_DFT_ID_PRESSURE:
             frames.append(frame)
@@ -904,6 +906,8 @@ def perform_signal_processing(frames):
 
         # These are definitely circular.
         # append(f"pos_iq_const_1:*", (pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        # append(f"pos_iq_const_1_+1:*", (pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2) + 1][REAL], pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2) + 1][IMAG]))
+        # append(f"pos_iq_const_1_-1:*", (pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2) - 1][REAL], pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2) - 1][IMAG]))
         # append(f"pos2_iq_const_1:*", (pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
 
         # From that we can extract a wrapped phase;
@@ -918,10 +922,25 @@ def perform_signal_processing(frames):
         def R(a):
             return np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
         z = R(angle_pos2).T.dot(np.array(spiralling_pos2_zero))
-        append(f"pos2_0_iq_rot:*", z)
+        # append(f"pos2_0_iq_rot:*", z)
         # Coincidence?! I think not.
         # append(f"pos_0_iq:*", (pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
     
+
+        def coord_interp(row, index):
+            x = interpolate(row.x[index], config)
+            y = interpolate(row.y[index], config)
+            return [x,y]
+        # lets make that line straight.
+        # Goes through
+        top_left = (8.916, 41.388)
+        bottom_right = (22.8, 30.43)
+        dx = top_left[0] - bottom_right[0]
+        dy = top_left[1] - bottom_right[1]
+        l_angle = np.arctan2(dx, dy)
+        v = R(l_angle  +np.pi / 2).dot(coord_interp(pos, 0))
+        # append(f"position", v)
+        append(f"position", (i, (v[1] - 37) * 10.0) )
 
 
     # calculate delta of phase
