@@ -867,8 +867,8 @@ def compare_scenario(data, interp_1, interp_2, keys):
 
 if __name__ == "__main__":
     # Metadata(size=MetataSize(rows=46, columns=68, width=27389, height=18259), transform=MetataTransform(xx=408.791, yx=0, tx=0, xy=0, yy=405.756, ty=0))
-    default_interpolate = changed_interpolate
-    # default_interpolate = cpp_interpolate_pos
+    # default_interpolate = changed_interpolate
+    default_interpolate = cpp_interpolate_pos
     scenario = test_scenarios.get(sys.argv[1], Scenario(sys.argv[1], max_index=None, interp=default_interpolate))
 
     d = load(scenario.filename)

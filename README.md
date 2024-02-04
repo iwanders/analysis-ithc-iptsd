@@ -31,5 +31,5 @@ Current understanding;
 
 - Linux data is 'wrong'; See linux time series plot of `pos` `REAL_0_0` and `IMAG_0_0`, this is always positive and jumps.
 - Windows data is different, and there `pos_from_pos` looks great. `ring_pos_from_pos` still leaves much to be desired.
-
+- Well, or so I thought, diagonal recording on windows; `2024_02_04_intelthcbase_bootlog_diagonal_wiggle_linux` also makse for wriggly lines.
 
