@@ -339,8 +339,9 @@ def changed_interpolate(row, config):
     # return changed_interpolate_quinn_2nd(row, config)
     # print(row)
     # maxi_override = get_maxi(row)
-    return cpp_interpolate_pos(row, config)
-    # return changed_interpolate_polyfit(row, config)
+    # return cpp_interpolate_pos(row, config)
+    # print(row)
+    return changed_interpolate_polyfit(row, config)
 
 def slanted_incontact_tip_loss_tip_y_row():
     row = Row(freq=1210480000, mag=510696, first=18, last=26, mid=22, zero=0, iq=[[33, 122], [53, 201], [94, 352], [150, 569], [186, 690], [230, 868], [159, 570], [89, 308], [49, 166]])
@@ -927,10 +928,24 @@ def perform_signal_processing(frames):
         # append(f"pos_0_iq:*", (pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
     
 
+        def row_manip(row):
+            # Lets rotate the iq by angle.
+            for r in range(IPTS_DFT_PRESSURE_ROWS):
+                c_p = [row.iq[r][IMAG], row.iq[r][REAL]]
+                n = R(-angle_pos).T.dot(c_p)
+                print(n)
+                row.iq[r][IMAG] = n[0]
+                row.iq[r][REAL] = n[1]
+
         def coord_interp(row, index):
-            x = interpolate(row.x[index], config)
-            y = interpolate(row.y[index], config)
+            x_z = row.x[index]
+            y_z = row.y[index]
+            # row_manip(x_z)
+            # row_manip(y_z)
+            x = interpolate(x_z, config)
+            y = interpolate(y_z, config)
             return [x,y]
+
         # lets make that line straight.
         # Goes through
         top_left = (8.916, 41.388)
@@ -938,9 +953,14 @@ def perform_signal_processing(frames):
         dx = top_left[0] - bottom_right[0]
         dy = top_left[1] - bottom_right[1]
         l_angle = np.arctan2(dx, dy)
-        v = R(l_angle  +np.pi / 2).dot(coord_interp(pos, 0))
+        p = coord_interp(pos, 0)
+        v = R(l_angle  +np.pi / 2).dot(p)
         # append(f"position", v)
-        append(f"position", (i, (v[1] - 37) * 10.0) )
+        append(f"position_rot", (i, (v[1] - 37) * 10.0) )
+        append(f"position", p)
+        append(f"coord_interp(pos2, 1)", coord_interp(pos2, 1))
+        append(f"coord_interp(pos, 1)", coord_interp(pos, 1))
+        append(f"coord_interp(pos, 0)", coord_interp(pos, 0))
 
 
     # calculate delta of phase
