@@ -911,6 +911,16 @@ def perform_signal_processing(frames):
         angle_pos2 = np.arctan2(pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG], pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL])
         append(f"angle_pos1:*", (i, angle_pos))
         append(f"angle_pos2:*", (i, angle_pos2))
+
+        spiralling_pos2_zero = (pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos2.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG])
+        # What happens if we rotate that by the pos2 phase?
+        # {\displaystyle R={\begin{bmatrix}\cos \theta &-\sin \theta \\\sin \theta &\cos \theta \end{bmatrix}}}
+        def R(a):
+            return np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
+        z = R(angle_pos2).T.dot(np.array(spiralling_pos2_zero))
+        append(f"pos2_0_iq_rot:*", z)
+        # Coincidence?! I think not.
+        # append(f"pos_0_iq:*", (pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
     
 
 
