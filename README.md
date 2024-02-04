@@ -33,3 +33,12 @@ Current understanding;
 - Windows data is different, and there `pos_from_pos` looks great. `ring_pos_from_pos` still leaves much to be desired.
 - Well, or so I thought, diagonal recording on windows; `2024_02_04_intelthcbase_bootlog_diagonal_wiggle_linux` also makse for wriggly lines.
 
+
+- We can extract the phase from `pos` and `pos2`, row 1;
+
+```
+        append(f"pos_iq_const_1:*", (pos.x[i].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[i].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        append(f"pos2_iq_const_1:*", (pos2.x[i].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos2.x[i].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+```
+They jump, but they jump at different points in time.
+

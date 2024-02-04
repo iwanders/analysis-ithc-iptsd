@@ -338,9 +338,9 @@ def changed_interpolate_quinn_2nd(row, config):
 def changed_interpolate(row, config):
     # return changed_interpolate_quinn_2nd(row, config)
     # print(row)
-    maxi_override = get_maxi(row)
-    return cpp_interpolate_pos(row, config, maxi_override)
-    return changed_interpolate_polyfit(row, config)
+    # maxi_override = get_maxi(row)
+    return cpp_interpolate_pos(row, config)
+    # return changed_interpolate_polyfit(row, config)
 
 def slanted_incontact_tip_loss_tip_y_row():
     row = Row(freq=1210480000, mag=510696, first=18, last=26, mid=22, zero=0, iq=[[33, 122], [53, 201], [94, 352], [150, 569], [186, 690], [230, 868], [159, 570], [89, 308], [49, 166]])
@@ -489,7 +489,7 @@ def do_things_on_frame(frame, interpolate_fun):
     print_things = True
     if print_things:
         for k, v in sorted(frame.items()):
-            # print(k)
+            print(k)
             print_dft_rows(v)
 
 
@@ -568,7 +568,7 @@ def do_things_on_frame(frame, interpolate_fun):
         centered = np.fft.fftshift(bigfft)
         print(centered)
 
-    # show_plots(results, scatter)
+    show_plots(results, scatter)
 
 
 def do_things_on_2_frame(before, after, interpolate_fun):
@@ -770,7 +770,7 @@ def time_series_frames(frames):
             for r in range(min(len(msg.x), 1)):
                 # maxi = get_maxi(msg.x[r])
                 maxi = int(IPTS_DFT_PRESSURE_ROWS / 2)
-                append(f"{comp_to_str(element)}_{element}_{r}", (i, msg.x[r].iq[maxi][element]))
+                #append(f"{comp_to_str(element)}_{element}_{r}", (i, msg.x[r].iq[maxi][element]))
 
         # append(f"{comp_to_str(element)}_real_{r}", (i, msg.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL]))
         # append(f"{comp_to_str(element)}_imag_{r}", (i, msg.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
@@ -779,7 +779,7 @@ def time_series_frames(frames):
         # append(f"iq_const_{r}:*", (pos.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[r].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
 
         # This is very circular.
-        # append(f"pos_iq_const_1:*", (pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        # append(f"pos_iq_const_0:*", (pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
         # So is this;
         # append(f"pos2_iq_const_1:*", (pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
 
@@ -794,6 +794,12 @@ def time_series_frames(frames):
         # append(f"{comp_to_str(element)}_const:*", (msg.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG], msg.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
         # append(f"{comp_to_str(element)}_const:*", (msg.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG], msg.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL]))
 
+
+        # append(f"pos_0_iq:*", (pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[0].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+
+        i = 1
+        append(f"pos_iq_const_1:*", (pos.x[i].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[i].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        append(f"pos2_iq_const_1:*", (pos2.x[i].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos2.x[i].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
 
 
     def plot(name):
@@ -927,14 +933,6 @@ if __name__ == "__main__":
         ]
         compare_scenario(d, cpp_interpolate_pos, interpolate, keys)
 
-    # do_on_frame = True
-    if do_on_frame:
-        # print("Frames: ", len(frames))
-        f = frames[190]
-        # print(f)
-
-        res = do_things_on_frame(f, interpolate)
-
 
     f1_diag_centerchange = 188
     f2_diag_centerchange = f1_diag_centerchange + 1
@@ -945,8 +943,22 @@ if __name__ == "__main__":
     f1_not_diagonal = 129
     f2_not_diagonal = f1_not_diagonal + 1
 
+    # in diag_win
+    f1_not_diagonal = 124
+    f2_not_diagonal = f1_not_diagonal + 1
+
     f1 = f1_not_diagonal
     f2 = f1_not_diagonal
+
+
+    do_on_frame = True
+    if do_on_frame:
+        # print("Frames: ", len(frames))
+        f = frames[f1]
+        # print(f)
+
+        res = do_things_on_frame(f, interpolate)
+
 
     # do_on_two_frame = True
     if do_on_two_frame:
@@ -979,7 +991,7 @@ if __name__ == "__main__":
         print("static constexpr Weights gaussian_at_4_stddev_0_7 {{{}}};".format(", ".join(f"{x}" for x in gaussian(list(range(9)), 1.0, 4, 0.7))))
 
 
-    # plot_time_series = True
+    plot_time_series = True
     if plot_time_series:
         # Maybe we need to extract out some modulation that the now-active pen does?
         time_series_frames(frames)
