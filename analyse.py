@@ -830,6 +830,11 @@ def print_data(d):
             for r in range(payload.rows):
                 print(f"y[{r}]", payload.y[r])
 
+def print_frame(frame):
+    for k, v in sorted(frame.items()):
+        print(k)
+        print_dft_rows(v)
+
 
 def make_frames(d):
     frames = []
@@ -871,6 +876,60 @@ def compare_scenario(data, interp_1, interp_2, keys):
     show_trajectory(res)
     
 
+def perform_signal_processing(frames):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    result = {}
+    def append(name, entry):
+        if not name in result:
+            result[name] = []
+        result[name].append(entry)
+
+    total_frames = len(frames)
+    dx = 50.0 / total_frames
+    y_offset = 20.0
+    dy = 10.0
+
+    for i, frame in enumerate(frames):
+        if len(frame.items()) < 4:
+            continue
+        if (i == 115):
+            print_frame(frame)
+
+        pos = frame[EntryType.IPTS_DFT_ID_POSITION]
+        pos2 = frame[EntryType.IPTS_DFT_ID_POSITION2]
+        pres = frame[EntryType.IPTS_DFT_ID_PRESSURE]
+        but = frame[EntryType.IPTS_DFT_ID_BUTTON]
+
+
+        # These are definitely circular.
+        # append(f"pos_iq_const_1:*", (pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+        # append(f"pos2_iq_const_1:*", (pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL], pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG]))
+
+        # From that we can extract a wrapped phase;
+        angle_pos = np.arctan2(pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG], pos.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL])
+        angle_pos2 = np.arctan2(pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][IMAG], pos2.x[1].iq[int(IPTS_DFT_PRESSURE_ROWS / 2)][REAL])
+        append(f"angle_pos1:*", (i, angle_pos))
+        append(f"angle_pos2:*", (i, angle_pos2))
+    
+
+
+    # calculate delta of phase
+    
+
+    def plot(name):
+        p = np.array(result[name])
+        if name.endswith("*"):
+            plt.scatter(p[:, 0], p[:, 1], c=range(p.shape[0]), label=name)
+            plt.plot(p[:, 0], p[:, 1], label=name, linewidth=0.3)
+        else:
+            plt.plot(p[:, 0], p[:, 1], label=name)
+
+    for k in result.keys():
+        plot(k)
+
+    plt.legend()
+    plt.show()
 
 if __name__ == "__main__":
     # Metadata(size=MetataSize(rows=46, columns=68, width=27389, height=18259), transform=MetataTransform(xx=408.791, yx=0, tx=0, xy=0, yy=405.756, ty=0))
@@ -904,6 +963,7 @@ if __name__ == "__main__":
     do_on_two_frame = False
     plot_time_series = False
     do_on_cpp_interpolate = False
+    do_signal_processing = False
 
 
     # do_full = True
@@ -951,7 +1011,7 @@ if __name__ == "__main__":
     f2 = f1_not_diagonal
 
 
-    do_on_frame = True
+    # do_on_frame = True
     if do_on_frame:
         # print("Frames: ", len(frames))
         f = frames[f1]
@@ -970,7 +1030,7 @@ if __name__ == "__main__":
         res = do_things_on_2_frame(before, after, interpolate)
 
 
-    do_full_frames = True
+    # do_full_frames = True
     if do_full_frames:
         res = process_frames(frames, interpolate)
         # print_data(d)
@@ -991,10 +1051,14 @@ if __name__ == "__main__":
         print("static constexpr Weights gaussian_at_4_stddev_0_7 {{{}}};".format(", ".join(f"{x}" for x in gaussian(list(range(9)), 1.0, 4, 0.7))))
 
 
-    plot_time_series = True
+    # plot_time_series = True
     if plot_time_series:
         # Maybe we need to extract out some modulation that the now-active pen does?
         time_series_frames(frames)
-        
+
+    do_signal_processing = True
+    if do_signal_processing:
+        perform_signal_processing(frames)
+    
         
 
