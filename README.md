@@ -5,6 +5,12 @@ nix develop .
 ./analyse.py ./spiral_out.json.gz
 ```
 
+# Microsoft docs
+
+https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/windows-pen-states  describes the state diagram for pens in windows. Also describes area of palm rejection.
+
+https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/haptic-pen-implementation-guide describes haptic things.
+
 
 # FCC
 
