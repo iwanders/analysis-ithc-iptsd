@@ -337,7 +337,7 @@ def changed_interpolate_quinn_2nd(row, config):
 
 def changed_interpolate(row, config):
     # return changed_interpolate_quinn_2nd(row, config)
-    print(row)
+    # print(row)
     maxi_override = get_maxi(row)
     return cpp_interpolate_pos(row, config, maxi_override)
     return changed_interpolate_polyfit(row, config)
@@ -362,7 +362,7 @@ def slanted_incontact_tip_loss_tip_y_row():
 
 
 
-Scenario = namedtuple("Scenario", ["filename", "max_index", "interp"])
+Scenario = namedtuple("Scenario", ["filename", "max_index", "interp", "min_index"])
 
 def process_data(d, interpolate):
     result = {}
@@ -489,7 +489,7 @@ def do_things_on_frame(frame, interpolate_fun):
     print_things = True
     if print_things:
         for k, v in sorted(frame.items()):
-            print(k)
+            # print(k)
             print_dft_rows(v)
 
 
@@ -756,7 +756,7 @@ def time_series_frames(frames):
         pos2 = frame[EntryType.IPTS_DFT_ID_POSITION2]
         pres = frame[EntryType.IPTS_DFT_ID_PRESSURE]
         but = frame[EntryType.IPTS_DFT_ID_BUTTON]
-        print(pos.x)
+        # print(pos.x)
 
         msg = pos
         # element = IMAG
@@ -838,15 +838,16 @@ def make_frames(d):
 
 
 test_scenarios = {
-    "slanted_incontact_tip_loss_orig":Scenario("./slanted_incontact.json.gz", max_index=73, interp=cpp_interpolate_pos),
-    "slanted_incontact_tip_loss_orig_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
-    "slanted_incontact_tip_loss_new":Scenario("./slanted_incontact.json.gz", max_index=73, interp=changed_interpolate),
-    "slanted_incontact_tip_loss_new_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=changed_interpolate),
-    "spiral_out_loss_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
-    "spiral_out_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos),
-    "spiral_out_new_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=changed_interpolate),
-    "diagonal":Scenario("./diagonal.json.gz", max_index=1e6, interp=changed_interpolate),
-    "diagonal_quin":Scenario("./diagonal.json.gz", max_index=1e6, interp=changed_interpolate_quinn_2nd),
+    "slanted_incontact_tip_loss_orig":Scenario("./slanted_incontact.json.gz", max_index=73, interp=cpp_interpolate_pos, min_index=0),
+    "slanted_incontact_tip_loss_orig_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=cpp_interpolate_pos, min_index=0),
+    "slanted_incontact_tip_loss_new":Scenario("./slanted_incontact.json.gz", max_index=73, interp=changed_interpolate, min_index=0),
+    "slanted_incontact_tip_loss_new_full":Scenario("./slanted_incontact.json.gz", max_index=1e6, interp=changed_interpolate, min_index=0),
+    "spiral_out_loss_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos, min_index=0),
+    "spiral_out_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=cpp_interpolate_pos, min_index=0),
+    "spiral_out_new_full":Scenario("./spiral_out.json.gz", max_index=1e6, interp=changed_interpolate, min_index=0),
+    "diagonal":Scenario("./diagonal.json.gz", max_index=1e6, interp=changed_interpolate, min_index=0),
+    "diagonal_quin":Scenario("./diagonal.json.gz", max_index=1e6, interp=changed_interpolate_quinn_2nd, min_index=0),
+    "diag_win":Scenario("../irp_logs_thcbase/2024_02_04_intelthcbase_bootlog_diagonal_wiggle_linux.json.gz", min_index=900, max_index=1302, interp=changed_interpolate),
 }
 
 def compare_scenario(data, interp_1, interp_2, keys):
@@ -867,9 +868,10 @@ def compare_scenario(data, interp_1, interp_2, keys):
 
 if __name__ == "__main__":
     # Metadata(size=MetataSize(rows=46, columns=68, width=27389, height=18259), transform=MetataTransform(xx=408.791, yx=0, tx=0, xy=0, yy=405.756, ty=0))
-    # default_interpolate = changed_interpolate
-    default_interpolate = cpp_interpolate_pos
-    scenario = test_scenarios.get(sys.argv[1], Scenario(sys.argv[1], max_index=None, interp=default_interpolate))
+    default_interpolate = changed_interpolate
+    # default_interpolate = changed_interpolate_quinn_2nd
+    # default_interpolate = cpp_interpolate_pos
+    scenario = test_scenarios.get(sys.argv[1], Scenario(sys.argv[1], max_index=None, min_index=None, interp=default_interpolate))
 
     d = load(scenario.filename)
     interpolate = scenario.interp
@@ -877,6 +879,12 @@ if __name__ == "__main__":
 
 
     frames = make_frames(d)
+    print(f"Total frames: {len(frames)}")
+    if scenario.max_index is not None:
+        frames = frames[:int(scenario.max_index)]
+    if scenario.min_index is not None:
+        frames = frames[int(scenario.min_index):]
+    print(f"Final frames: {len(frames)}")
 
     metadata = get_metadata(d)
     print(metadata)
@@ -897,10 +905,10 @@ if __name__ == "__main__":
         res = process_data(d, interpolate)
         # print_data(d)
         s = process_single_frame(frames[190], interpolate)
-        res["OURMARKER*"] = s["pos_from_pos"]
+        res["OURMARKER*"] = s["ring_pos_from_pos"]
         show_trajectory(res)
 
-    do_on_cpp_interpolate = True
+    # do_on_cpp_interpolate = True
     if do_on_cpp_interpolate:
         res = process_data(d, cpp_interpolate_pos)
         z = {}
@@ -950,12 +958,12 @@ if __name__ == "__main__":
         res = do_things_on_2_frame(before, after, interpolate)
 
 
-    # do_full_frames = True
+    do_full_frames = True
     if do_full_frames:
         res = process_frames(frames, interpolate)
         # print_data(d)
         s = process_single_frame(frames[f1], interpolate)
-        print(s)
+        # print(s)
         res["OURMARKER*"] = s["ring_pos_from_pos"]
         s = process_single_frame(frames[f2], interpolate)
         res["MARK2*"] = s["ring_pos_from_pos"]
@@ -971,7 +979,7 @@ if __name__ == "__main__":
         print("static constexpr Weights gaussian_at_4_stddev_0_7 {{{}}};".format(", ".join(f"{x}" for x in gaussian(list(range(9)), 1.0, 4, 0.7))))
 
 
-    plot_time_series = True
+    # plot_time_series = True
     if plot_time_series:
         # Maybe we need to extract out some modulation that the now-active pen does?
         time_series_frames(frames)
