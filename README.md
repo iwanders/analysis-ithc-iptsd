@@ -25,6 +25,8 @@ Enable logging:
 .\IRPMonc.exe --input=D:\\.\irpmndrv --hook-driver=ICD:\Driver\IntelTHCBase --boot-log=1 --strip-data=0 --save-settings=1
 ```
 
+On capturing IntelTHCBase in the gui, don't use the upp one.
+
 Disable logging:
 
 ```
