@@ -990,6 +990,14 @@ It's this; when touch is used:
 
 """
 
+def run_extract_data(args):
+    records = load_file(args.in_file)
+    data = discard_outgoing(records)
+    upto = int(args.upto)
+    mid = int(len(data)/2) if args.index is None else int(args.index)
+    mid = concat(args.output, data[mid: mid+upto])
+
+
 def run_things(args):
     records = load_file(args.in_file)
     data = discard_outgoing(records)
@@ -1035,6 +1043,13 @@ if __name__ == '__main__':
 
     print_requests = subparser_with_default('print_requests')
     print_requests.set_defaults(func=run_print_requests)
+
+    extract_data_parser = subparser_with_default('extract_data')
+    extract_data_parser.add_argument("--index", nargs="?", default=None, help="Index to extract to, defaults to midpoint.")
+    extract_data_parser.add_argument("--upto", nargs="?", default=1, help="Number of messages to convert, defaults to %(default)s.")
+    extract_data_parser.add_argument("--output", nargs="?", default="/tmp/concact_data.bin", help="Output to write to, defaulst to %(default)s")
+    
+    extract_data_parser.set_defaults(func=run_extract_data)
 
 
 
