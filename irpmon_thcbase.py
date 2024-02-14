@@ -277,6 +277,21 @@ class Readable:
 class Base(ctypes.LittleEndianStructure, Readable):
     _pack_ = 1
 
+    def as_dict(self):
+        z = {}
+        for k, t in self._fields_:
+            if k.startswith("_"):
+                continue
+            z[k] = getattr(self, k)
+        return z
+
+    def __repr__(self):
+        return str(self.as_dict())
+
+    @classmethod
+    def pop(cls, data):
+        header = cls.read(data)
+        return header, data[ctypes.sizeof(header):ctypes.sizeof(header) + header.size], data[ctypes.sizeof(header) + header.size:]
 
 class DeviceInfo(Base):
     _fields_ = [("vendor", ctypes.c_uint16),
@@ -328,6 +343,40 @@ class Metadata(Base):
                 43 00 00 00 40 1C"""
         a = bytearray([int(z, 16) for z in a.split()]);
         return Metadata.read(a)
+
+
+# The actual IRP header.
+class IRPStart(Base):
+    _fields_ = [("type", ctypes.c_uint8),
+                ("unknown", ctypes.c_uint16),
+                ("size", ctypes.c_uint32),
+                ("_pad", ctypes.c_uint8 * 3),
+                ("outer_size", ctypes.c_uint32),
+                ("_pad2", ctypes.c_uint8 * 15),
+               ]
+
+    # Function to clip data using the IRP header, resulting holds IPTS reports.
+    def clip_data(self, data):
+        return data[ctypes.sizeof(self):3+self.size]
+
+
+
+class IPTSReport(Base):
+    _fields_ = [("type", ctypes.c_uint8),
+                ("flags", ctypes.c_uint8),
+                ("size", ctypes.c_uint16)
+               ]
+
+def parse_irp(data):
+    irp_header, remainder, discard = IRPStart.pop(data)
+    # print(discard)
+    reports = []
+    while remainder:
+        report_header, data, remainder = IPTSReport.pop(remainder)
+        if report_header.type == 0:
+            break
+        reports.append((report_header, data))
+    return reports
 
 """
 struct Metadata {
@@ -1002,20 +1051,11 @@ def run_things(args):
     records = load_file(args.in_file)
     data = discard_outgoing(records)
 
-    # chunk_writer("/tmp/chunks/chunk", data_records)
-    # iptsd_dumper("/tmp/out.bin", data_record_truncator(filter_iptsd_frames(data_records)))
-    # full = concat("/tmp/concat.bin", data_records)
-    requests = concat("/tmp/request_records.bin", request_records)
 
-    for i in range(len(full) - 4):
-        (v, ) = struct.unpack_from("<I", full, i)
-        #if (v == 1210480000):
-        #    print(f"Found {v} at 0x{i:0>8x}")
+    for d in data:
+        z = parse_irp(d)
+        print(z)
 
-    # let also output the middle chunks
-    mid = int(len(data_records)/2)
-    print(mid)
-    mid = concat("/tmp/concat_mid.bin", data_records[mid: mid+5])
 
     
 
