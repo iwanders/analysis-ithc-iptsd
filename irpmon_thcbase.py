@@ -1051,11 +1051,10 @@ def run_things(args):
     records = load_file(args.in_file)
     data = discard_outgoing(records)
 
-
     for d in data:
         z = parse_irp(d)
-        print(z)
-
+        for (header, data) in z:
+            print(hex(header.type), header)
 
     
 
