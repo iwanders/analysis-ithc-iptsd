@@ -12,6 +12,8 @@ import pickle
 import os
 import argparse
 
+from ipts import *
+
 # https://stackoverflow.com/a/312464
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
@@ -167,86 +169,6 @@ def discard_record_data(d):
     return Irp(**z)
 
 
-# Convenience mixin to allow construction of struct from a byte like object.
-class Readable:
-    @classmethod
-    def read(cls, byte_object):
-        a = cls()
-        ctypes.memmove(ctypes.addressof(a), bytes(byte_object),
-                       min(len(byte_object), ctypes.sizeof(cls)))
-        return a
-
-
-class Base(ctypes.LittleEndianStructure, Readable):
-    _pack_ = 1
-
-    def as_dict(self):
-        z = {}
-        for k, t in self._fields_:
-            if k.startswith("_"):
-                continue
-            z[k] = getattr(self, k)
-        return z
-
-    def __repr__(self):
-        return str(self.as_dict())
-
-    @classmethod
-    def pop(cls, data):
-        header = cls.read(data)
-        return header, data[ctypes.sizeof(header):ctypes.sizeof(header) + header.size], data[ctypes.sizeof(header) + header.size:]
-
-class DeviceInfo(Base):
-    _fields_ = [("vendor", ctypes.c_uint16),
-                ("product", ctypes.c_uint16),
-                ("padding", ctypes.c_uint8 * 4),
-                ("buffer_size", ctypes.c_uint64),
-               ]
-
-    @staticmethod
-    def from_dump():
-        a = "5E 04 52 0C 00 00 00 00 3F 1D 00 00 00 00 00 00"
-        a = bytearray([int(z, 16) for z in a.split()]);
-        return DeviceInfo.read(a)
-
-# Header: info, has_metadata(u8), metadata
-
-class ipts_touch_metadata_size(Base):
-    _fields_ = [("rows", ctypes.c_uint32),
-                ("columns", ctypes.c_uint32),
-                ("width", ctypes.c_uint32),
-                ("height", ctypes.c_uint32),
-               ]
-
-class ipts_touch_metadata_transform(Base):
-    _fields_ = [("xx", ctypes.c_float),
-                ("yx", ctypes.c_float),
-                ("tx", ctypes.c_float),
-                ("xy", ctypes.c_float),
-                ("yy", ctypes.c_float),
-                ("ty", ctypes.c_float),
-               ]
-
-class ipts_touch_metadata_unknown(Base):
-    _fields_ = [("unknown", ctypes.c_float * 16),]
-
-class Metadata(Base):
-    _fields_ = [("ipts_touch_metadata_size", ipts_touch_metadata_size),
-                ("ipts_touch_metadata_transform", ipts_touch_metadata_transform),
-                ("unknown_byte", ctypes.c_uint8),
-                ("ipts_touch_metadata_unknown", ipts_touch_metadata_unknown),
-               ]
-    @staticmethod
-    def from_dump():
-        a =  """2E 00 00 00 44 00 00 00 FD 6A 00 00 53 47 00 00 41 65 CC 43
-                00 00 00 00 00 00 00 00 00 00 00 00 B6 E0 CA 43 00 00 00 00
-                01 00 00 32 43 00 00 36 43 00 00 34 43 00 00 80 3F 00 00 32
-                43 00 00 36 43 00 00 34 43 00 00 80 3F 00 00 B4 42 00 00 2B
-                43 00 00 C8 42 00 00 A0 41 00 00 2C 43 00 00 31 43 00 00 2F
-                43 00 00 00 40 1C"""
-        a = bytearray([int(z, 16) for z in a.split()]);
-        return Metadata.read(a)
-
 
 # The actual IRP header.
 class IRPStart(Base):
@@ -264,22 +186,17 @@ class IRPStart(Base):
 
 
 
-class IPTSReport(Base):
-    _fields_ = [("type", ctypes.c_uint8),
-                ("flags", ctypes.c_uint8),
-                ("size", ctypes.c_uint16)
-               ]
-
 def parse_irp(data):
-    irp_header, remainder, discard = IRPStart.pop(data)
+    irp_header, remainder, discard = IRPStart.pop_size(data)
     # print(discard)
     reports = []
     while remainder:
-        report_header, data, remainder = IPTSReport.pop(remainder)
+        report_header, data, remainder = IPTSReport.pop_size(remainder)
         if report_header.type == 0:
             break
         reports.append((report_header, data))
     return irp_header, reports
+
 
 
 
@@ -459,6 +376,8 @@ def run_things(args):
         irp_header, reports = parse_irp(d)
         for (header, data) in reports:
             print(hex(header.type), header)
+            z = interpret_report(header, data)
+            print(z)
 
     
 

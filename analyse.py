@@ -19,6 +19,7 @@ import sys
 import json
 from collections import namedtuple
 from enum import Enum
+from ipts import DftType
 
 clamp = lambda x, y, z: max(min(x, z), y)
 
@@ -30,16 +31,6 @@ IMAG = 1
 def comp_to_str(z):
     return {REAL: "REAL", IMAG: "IMAG"}[z]
 
-class EntryType(Enum):
-    IPTS_DFT_ID_POSITION = 6
-    IPTS_DFT_ID_POSITION2 = 7
-    IPTS_DFT_ID_BUTTON   = 9
-    IPTS_DFT_ID_PRESSURE = 11
-    IPTS_DFT_ID_10 = 10
-    IPTS_DFT_ID_8 = 8
-    METADATA = 999
-    def __lt__(self, o):
-        self._value_ < o._value_
 
 
 
@@ -66,14 +57,14 @@ def load(p):
     with opener(p) as f:
         d = json.load(f)
     for r in d:
-        looked_up_type = EntryType[r["type"]]
-        if looked_up_type in (EntryType.IPTS_DFT_ID_POSITION, EntryType.IPTS_DFT_ID_POSITION2, EntryType.IPTS_DFT_ID_BUTTON, EntryType.IPTS_DFT_ID_PRESSURE):
+        looked_up_type = DftType[r["type"]]
+        if looked_up_type in (DftType.IPTS_DFT_ID_POSITION, DftType.IPTS_DFT_ID_POSITION2, DftType.IPTS_DFT_ID_BUTTON, DftType.IPTS_DFT_ID_PRESSURE):
             payload = r["payload"]
             x = [Row(**v) for v in payload["x"]]
             y = [Row(**v) for v in payload["y"]]
             window = DftWindow(rows=payload["rows"], type=payload["type"], x=x, y=y)
             entries.append(Record(type=looked_up_type, payload=window))
-        if looked_up_type == EntryType.METADATA:
+        if looked_up_type == DftType.METADATA:
             payload = r["payload"]
             size = MetadataSize(**payload["size"])
             transform = MetataTransform(**payload["transform"])
@@ -86,7 +77,7 @@ def load(p):
 
 def get_metadata(d):
     for z in d:
-        if z.type == EntryType.METADATA:
+        if z.type == DftType.METADATA:
             return z.payload
 
 def get_maxi(row):
@@ -377,7 +368,7 @@ def process_data(d, interpolate):
         payload = r.payload
         if scenario.max_index is not None and i > scenario.max_index:
             break
-        if r.type == EntryType.IPTS_DFT_ID_POSITION2:
+        if r.type == DftType.IPTS_DFT_ID_POSITION2:
             x = interpolate(payload.x[0], config)
             y = interpolate(payload.y[0], config)
             pos_from_pos2.append([x,y])
@@ -386,7 +377,7 @@ def process_data(d, interpolate):
             y = interpolate(payload.y[1], config)
             ring_pos_from_pos2.append([x,y])
             
-        if r.type == EntryType.IPTS_DFT_ID_POSITION:
+        if r.type == DftType.IPTS_DFT_ID_POSITION:
             x = interpolate(payload.x[0], config)
             y = interpolate(payload.y[0], config)
             pos_from_pos.append([x,y])
@@ -496,9 +487,9 @@ def do_things_on_frame(frame, interpolate_fun):
 
 
     # [[-2, -6], [-3, -5], [-2, 1], [28, 61], [327, 707], [30, 64], [4, 8], [1, 3], [0, 1]]
-    pos_payload = frame[EntryType.IPTS_DFT_ID_POSITION]
-    pos2_payload = frame[EntryType.IPTS_DFT_ID_POSITION2]
-    pressure_payload = frame[EntryType.IPTS_DFT_ID_PRESSURE]
+    pos_payload = frame[DftType.IPTS_DFT_ID_POSITION]
+    pos2_payload = frame[DftType.IPTS_DFT_ID_POSITION2]
+    pressure_payload = frame[DftType.IPTS_DFT_ID_PRESSURE]
     # print(pos_payload)
 
     freq = cpp_interpolate_frequency(pressure_payload, config)
@@ -580,7 +571,7 @@ def do_things_on_2_frame(before, after, interpolate_fun):
     print_things = True
     if print_things:
         print("Before:")
-        these = (EntryType.IPTS_DFT_ID_POSITION,)
+        these = (DftType.IPTS_DFT_ID_POSITION,)
         for k, v in sorted(before.items()):
             if not k in these:
                 continue
@@ -593,8 +584,8 @@ def do_things_on_2_frame(before, after, interpolate_fun):
             print(k)
             print_dft_rows(v)
 
-    pos_1 = before[EntryType.IPTS_DFT_ID_POSITION]
-    pos_2 = after[EntryType.IPTS_DFT_ID_POSITION]
+    pos_1 = before[DftType.IPTS_DFT_ID_POSITION]
+    pos_2 = after[DftType.IPTS_DFT_ID_POSITION]
     # interpolator = changed_interpolate_quinn_2nd
     interpolator = changed_interpolate
     # interpolator = cpp_interpolate_pos
@@ -697,10 +688,10 @@ def process_frames(frames, interpolate):
     for i, frame in enumerate(frames):
         if len(frame.items()) < 4:
             continue
-        pos = frame[EntryType.IPTS_DFT_ID_POSITION]
-        pos2 = frame[EntryType.IPTS_DFT_ID_POSITION2]
-        pres = frame[EntryType.IPTS_DFT_ID_PRESSURE]
-        but = frame[EntryType.IPTS_DFT_ID_BUTTON]
+        pos = frame[DftType.IPTS_DFT_ID_POSITION]
+        pos2 = frame[DftType.IPTS_DFT_ID_POSITION2]
+        pres = frame[DftType.IPTS_DFT_ID_PRESSURE]
+        but = frame[DftType.IPTS_DFT_ID_BUTTON]
 
         def coord_interp(row, index):
             x = interpolate(row.x[index], config)
@@ -753,10 +744,10 @@ def time_series_frames(frames):
     for i, frame in enumerate(frames):
         if len(frame.items()) < 4:
             continue
-        pos = frame[EntryType.IPTS_DFT_ID_POSITION]
-        pos2 = frame[EntryType.IPTS_DFT_ID_POSITION2]
-        pres = frame[EntryType.IPTS_DFT_ID_PRESSURE]
-        but = frame[EntryType.IPTS_DFT_ID_BUTTON]
+        pos = frame[DftType.IPTS_DFT_ID_POSITION]
+        pos2 = frame[DftType.IPTS_DFT_ID_POSITION2]
+        pres = frame[DftType.IPTS_DFT_ID_PRESSURE]
+        but = frame[DftType.IPTS_DFT_ID_BUTTON]
         # print(pos.x)
 
         msg = pos
@@ -822,7 +813,7 @@ def time_series_frames(frames):
 def print_data(d):
     for i, r in enumerate(d):
         payload = r.payload
-        if r.type in (EntryType.IPTS_DFT_ID_POSITION, EntryType.IPTS_DFT_ID_POSITION2,  EntryType.IPTS_DFT_ID_BUTTON,  EntryType.IPTS_DFT_ID_PRESSURE):
+        if r.type in (DftType.IPTS_DFT_ID_POSITION, DftType.IPTS_DFT_ID_POSITION2,  DftType.IPTS_DFT_ID_BUTTON,  DftType.IPTS_DFT_ID_PRESSURE):
             print(r.type)
             print("Rows: ")
             for r in range(payload.rows):
@@ -842,10 +833,10 @@ def make_frames(d):
     frame = { }
     for z in d:
         frame[z.type] = z.payload
-        # if z.type == EntryType.IPTS_DFT_ID_BUTTON:
-        # if z.type == EntryType.IPTS_DFT_ID_POSITION2:
-        if z.type == EntryType.IPTS_DFT_ID_POSITION:
-        # if z.type == EntryType.IPTS_DFT_ID_PRESSURE:
+        # if z.type == DftType.IPTS_DFT_ID_BUTTON:
+        # if z.type == DftType.IPTS_DFT_ID_POSITION2:
+        if z.type == DftType.IPTS_DFT_ID_POSITION:
+        # if z.type == DftType.IPTS_DFT_ID_PRESSURE:
             frames.append(frame)
             frame = {}
     return frames
@@ -899,10 +890,10 @@ def perform_signal_processing(frames):
         if (i == 115):
             print_frame(frame)
 
-        pos = frame[EntryType.IPTS_DFT_ID_POSITION]
-        pos2 = frame[EntryType.IPTS_DFT_ID_POSITION2]
-        pres = frame[EntryType.IPTS_DFT_ID_PRESSURE]
-        but = frame[EntryType.IPTS_DFT_ID_BUTTON]
+        pos = frame[DftType.IPTS_DFT_ID_POSITION]
+        pos2 = frame[DftType.IPTS_DFT_ID_POSITION2]
+        pres = frame[DftType.IPTS_DFT_ID_PRESSURE]
+        but = frame[DftType.IPTS_DFT_ID_BUTTON]
 
 
         # These are definitely circular.
