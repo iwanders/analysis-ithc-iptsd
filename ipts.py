@@ -172,6 +172,10 @@ class ipts_report_header(Base):
                ]
 
 
+# ------------------------------------------------------------------------
+# What follows is high level data types that capture the previous stuff.
+# ------------------------------------------------------------------------
+
 class IptsReport(Convertible):
     def __init__(self, **kwargs):
         self._fields_ = []
@@ -182,10 +186,55 @@ class IptsReport(Convertible):
     def __repr__(self):
         return f"{self.__class__}: {str(self.as_dict())}"
 
-    @staticmethod
-    def parse(header, data):
-        return IptsReport(header=header, data=data)
+    @classmethod
+    def parse(cls, header, data):
+        return cls(header=header, data=data)
 
+class IptsTimestamp(IptsReport):
+    pass
+class IptsDimensions(IptsReport):
+    pass
+class IptsHeatmap(IptsReport):
+    pass
+class IptsNoiseStylusV1(IptsReport):
+    pass
+class IptsNoiseStylusV2(IptsReport):
+    pass
+class IptsFrequencyNoise(IptsReport):
+    pass
+class IptsPenGeneral(IptsReport):
+    pass
+
+class IptsJNROutput(IptsReport):
+    pass
+class IptsNoiseMetricsOutput(IptsReport):
+    pass
+class IptsDataSelection(IptsReport):
+    pass
+class IptsMagnitude(IptsReport):
+    pass
+
+class IptsDftWindow(IptsReport):
+    pass
+class IptsDftWindowPressure(IptsDftWindow):
+    pass
+class IptsDftWindowPosition(IptsDftWindow):
+    pass
+class IptsDftWindowPosition2(IptsDftWindow):
+    pass
+class IptsDftWindowButton(IptsDftWindow):
+    pass
+
+class IptsMultipleRegion(IptsReport):
+    pass
+class IptsTouchedAntennas(IptsReport):
+    pass
+class IptsPenMetadata(IptsReport):
+    pass
+class IptsPenDetection(IptsReport):
+    pass
+class IptsPenLift(IptsReport):
+    pass
 
 class IptsDftWindow(IptsReport):
     @staticmethod
@@ -199,17 +248,36 @@ class IptsDftWindow(IptsReport):
         for i in range(header.num_rows):
             row, data = ipts_pen_dft_window_row.pop(data)
             ys.append(row)
-        return IptsDftWindow(header=header, x=xs, y=ys)
+        dft_types = {
+            DftType.IPTS_DFT_ID_POSITION._value_: IptsDftWindowPosition,
+            DftType.IPTS_DFT_ID_POSITION2._value_: IptsDftWindowPosition2,
+            DftType.IPTS_DFT_ID_BUTTON._value_: IptsDftWindowButton,
+            DftType.IPTS_DFT_ID_PRESSURE._value_: IptsDftWindowPressure,
+        }
+        use_type = dft_types.get(header.data_type, IptsDftWindow)
 
-
-
-def parse_data_fallback(report_header, data):
-    return IptsReport.parse(header=report_header, data=data)
+        return use_type(header=header, x=xs, y=ys)
 
 report_parsers = {
-    ReportType.IPTS_REPORT_TYPE_PEN_DFT_WINDOW._value_:IptsDftWindow.parse
+    ReportType.IPTS_REPORT_TYPE_TIMESTAMP._value_:IptsTimestamp,
+    ReportType.IPTS_REPORT_TYPE_DIMENSIONS._value_:IptsDimensions,
+    ReportType.IPTS_REPORT_TYPE_HEATMAP._value_:IptsHeatmap,
+    ReportType.IPTS_REPORT_TYPE_STYLUS_V1._value_:IptsNoiseStylusV1,
+    ReportType.IPTS_REPORT_TYPE_STYLUS_V2._value_:IptsNoiseStylusV2,
+    ReportType.IPTS_REPORT_TYPE_FREQUENCY_NOISE._value_:IptsFrequencyNoise,
+    ReportType.IPTS_REPORT_TYPE_PEN_GENERAL._value_:IptsPenGeneral,
+    ReportType.IPTS_REPORT_TYPE_PEN_JNR_OUTPUT._value_:IptsJNROutput,
+    ReportType.IPTS_REPORT_TYPE_PEN_NOISE_METRICS_OUTPUT._value_:IptsNoiseMetricsOutput,
+    ReportType.IPTS_REPORT_TYPE_PEN_DATA_SELECTION._value_:IptsDataSelection,
+    ReportType.IPTS_REPORT_TYPE_PEN_MAGNITUDE._value_:IptsMagnitude,
+    ReportType.IPTS_REPORT_TYPE_PEN_DFT_WINDOW._value_:IptsDftWindow,
+    ReportType.IPTS_REPORT_TYPE_PEN_MULTIPLE_REGION._value_:IptsMultipleRegion,
+    ReportType.IPTS_REPORT_TYPE_PEN_TOUCHED_ANTENNAS._value_:IptsTouchedAntennas,
+    ReportType.IPTS_REPORT_TYPE_PEN_METADATA._value_:IptsPenMetadata,
+    ReportType.IPTS_REPORT_TYPE_PEN_DETECTION._value_:IptsPenDetection,
+    ReportType.IPTS_REPORT_TYPE_PEN_LIFT._value_:IptsPenLift,
 }
 
 def interpret_report(header, data):
-    p = report_parsers.get(header.type, parse_data_fallback)
-    return p(header, data)
+    p = report_parsers.get(header.type, IptsReport)
+    return p.parse(header, data)
