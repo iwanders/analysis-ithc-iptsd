@@ -191,7 +191,7 @@ def parse_irp(data):
     # print(discard)
     reports = []
     while remainder:
-        report_header, data, remainder = IPTSReport.pop_size(remainder)
+        report_header, data, remainder = ipts_report_header.pop_size(remainder)
         if report_header.type == 0:
             break
         reports.append((report_header, data))

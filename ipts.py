@@ -47,31 +47,32 @@ class Readable:
                        min(len(byte_object), ctypes.sizeof(cls)))
         return a
 
-
-class Base(ctypes.LittleEndianStructure, Readable):
-    _pack_ = 1
-
+class Convertible:
     def as_dict(self):
         def convert(z):
-            if isinstance(z, ctypes.Structure):
+            if isinstance(z, ctypes.Structure) or isinstance(z, IptsReport) or isinstance(z, dict):
                 o = {}
                 for k, t in z._fields_:
                     if k.startswith("_"):
                         continue
-                    v = getattr(self, k)
+                    v = getattr(z, k)
                     o[k] = convert(v)
                 return o
-            elif isinstance(z, ctypes.Array):
+            elif isinstance(z, ctypes.Array) or isinstance(z, list):
                 o = []
-                for i in range(z._length_):
-                    o.append(convert(z[i]))
+                for v in z:
+                    o.append(convert(v))
                 return o
             elif isinstance(z, (bool, str, int, float, type(None))):
                 return z
             else:
-                raise BaseException(f"unhandled type {type(z)}: {z}")
+                raise BaseException(f"unhandled type {type(z)}")
                 
         return convert(self)
+    
+
+class Base(ctypes.LittleEndianStructure, Readable, Convertible):
+    _pack_ = 1
 
     def __repr__(self):
         return str(self.as_dict())
@@ -135,7 +136,7 @@ IPTS_DFT_PRESSURE_ROWS  = 6
 
 class ipts_pen_dft_window_row(Base):
     _fields_ = [("frequency", ctypes.c_uint32),
-                ("manitude", ctypes.c_uint8),
+                ("magnitude", ctypes.c_uint32),
                 ("real", ctypes.c_int16 * IPTS_DFT_NUM_COMPONENTS),
                 ("imag", ctypes.c_int16 * IPTS_DFT_NUM_COMPONENTS),
                 ("first", ctypes.c_uint8),
@@ -144,19 +145,6 @@ class ipts_pen_dft_window_row(Base):
                 ("zero", ctypes.c_uint8),
                ]
 
-IptsDft = namedtuple("IptsDftWindow", ["header", "x", "y"])
-
-def parse_dft_window(report_header, data):
-    header, data = ipts_pen_dft_window.pop(data)
-    xs = []
-    ys = []
-    for i in range(header.num_rows):
-        row, data = ipts_pen_dft_window_row.pop(data)
-        xs.append(row)
-    for i in range(header.num_rows):
-        row, data = ipts_pen_dft_window_row.pop(data)
-        ys.append(row)
-    return IptsDft(header=header, x=xs, y=ys)
 
 
 class Metadata(Base):
@@ -177,19 +165,51 @@ class Metadata(Base):
         return Metadata.read(a)
 
 
-class IPTSReport(Base):
+class ipts_report_header(Base):
     _fields_ = [("type", ctypes.c_uint8),
                 ("flags", ctypes.c_uint8),
                 ("size", ctypes.c_uint16)
                ]
-IPTSData = namedtuple("IPTSData", ["header", "data"])
-def parse_data(report_header, data):
-    return IPTSData(header=report_header, data=data)
+
+
+class IptsReport(Convertible):
+    def __init__(self, **kwargs):
+        self._fields_ = []
+        for k,v in kwargs.items():
+            self._fields_.append((k, type(v)))
+            setattr(self, k, v)
+
+    def __repr__(self):
+        return f"{self.__class__}: {str(self.as_dict())}"
+
+    @staticmethod
+    def parse(header, data):
+        return IptsReport(header=header, data=data)
+
+
+class IptsDftWindow(IptsReport):
+    @staticmethod
+    def parse(header, data):
+        header, data = ipts_pen_dft_window.pop(data)
+        xs = []
+        ys = []
+        for i in range(header.num_rows):
+            row, data = ipts_pen_dft_window_row.pop(data)
+            xs.append(row)
+        for i in range(header.num_rows):
+            row, data = ipts_pen_dft_window_row.pop(data)
+            ys.append(row)
+        return IptsDftWindow(header=header, x=xs, y=ys)
+
+
+
+def parse_data_fallback(report_header, data):
+    return IptsReport.parse(header=report_header, data=data)
 
 report_parsers = {
-    ReportType.IPTS_REPORT_TYPE_PEN_DFT_WINDOW._value_:parse_dft_window
+    ReportType.IPTS_REPORT_TYPE_PEN_DFT_WINDOW._value_:IptsDftWindow.parse
 }
 
 def interpret_report(header, data):
-    p = report_parsers.get(header.type, parse_data)
+    p = report_parsers.get(header.type, parse_data_fallback)
     return p(header, data)
