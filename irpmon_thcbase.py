@@ -192,13 +192,10 @@ def parse_irp(data):
     reports = []
     while remainder:
         report_header, data, remainder = ipts_report_header.pop_size(remainder)
-        if report_header.type == 0:
+        if report_header.type == 0xff: # seems to be termination
             break
         reports.append((report_header, data))
     return irp_header, reports
-
-
-
 
 
 def data_record_truncator(data_records):
@@ -368,18 +365,42 @@ def run_extract_data(args):
     mid = concat(args.output, data[mid: mid+upto])
 
 
-def run_things(args):
+def run_decomposition(args):
     records = load_file(args.in_file)
     data = discard_outgoing(records)
 
-    for d in data:
-        irp_header, reports = parse_irp(d)
-        for (header, data) in reports:
-            print(hex(header.type), header)
-            z = interpret_report(header, data)
-            print(z)
+    def write(i, n, data):
+        if i < args.start_index:
+            return
+        if args.end_index is not None and i >= args.end_index:
+            return
+        if args.dump_chunks:
+            with open(os.path.join(args.dump_chunks, f"{i:0>8d}_{n}.bin"), "wb") as f:
+                f.write(bytearray(data))
 
-    
+    for i, d in enumerate(data):
+        irp_header, reports = parse_irp(d)
+        print(f"0x{irp_header.type:0>2x}: {irp_header}")
+        write(i, f"i0x{irp_header.type:0>2x}_000_full", d)
+
+        for ri, (header, data) in enumerate(reports):
+            z = interpret_report(header, data)
+            if isinstance(z, IptsDftWindow):
+                write(i, f"i0x{irp_header.type:0>2x}_{ri:0>2d}_t0x{header.type:0>2x}_{type(z).__name__}_d0x{z.header.data_type:0>2x}", d)
+                print(f"    {type(z).__name__}  {hex(header.type)}, {header}, dft data type: 0x{z.header.data_type:0>2x}")
+            else:
+                write(i, f"i0x{irp_header.type:0>2x}_{ri:0>2d}_t0x{header.type:0>2x}_{type(z).__name__}", data)
+                print(f"    {type(z).__name__}  {hex(header.type)}, {header}")
+                
+                
+
+
+def run_things(args):
+    records = load_file(args.in_file)
+    data = discard_outgoing(records)
+    pass
+
+
 
 if __name__ == '__main__':
 
@@ -399,6 +420,12 @@ if __name__ == '__main__':
 
     things_parser = subparser_with_default('things')
     things_parser.set_defaults(func=run_things)
+
+    decomposition_parser = subparser_with_default('decomposition')
+    decomposition_parser.add_argument("--dump-chunks", help="Write chunks to this directory", default=None, nargs="?")
+    decomposition_parser.add_argument("--start-index", help="Start writing from this index", default=0, type=int)
+    decomposition_parser.add_argument("--end-index", help="Stop writing at this index", default=None, type=int)
+    decomposition_parser.set_defaults(func=run_decomposition)
 
     print_setup = subparser_with_default('print_setup')
     print_setup.set_defaults(func=run_print_setup)
