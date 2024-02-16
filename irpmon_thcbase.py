@@ -423,7 +423,7 @@ def run_comparison(args):
     prevs = {k: 0 for k in keys}
     uniques = {k: set() for k in keys}
     for i in range(max_i):
-        if (lp % 20 == 0):
+        if (lp % 20 == 0 and i != 0):
             lp += 1
             print("".join(f"{x: >50s}" for x in keys))
 
@@ -440,13 +440,26 @@ def run_comparison(args):
                     # d = z.ctr - prevs[k]
                     # prevs[k] = z.ctr
                     l[k].append(f"{z.c}  {z.t}  {z.r}")
-                if isinstance(z, IptsPenDetection) and True:
+                if isinstance(z, IptsPenDetection) and False:
                     # l[k].append(f"{z.d1}  {z.d2} {z.d1 - z.d2}  {z.f1} {z.f2}")
                     # tl = f"{z.d1: >5d}  {z.d2: >5d} "
                     tl = f"{z.f1}  {z.f2} {list(z.fn)} "
                     l[k].append(tl)
                     # uniques[k].add(hexify(data))
                     uniques[k].add(tl)
+                if isinstance(z, IptsMagnitude) and True:
+                    ignore = z.x1 == 255 or z.x2 == 255 or z.y1 == 255 or z.y2 == 255
+                    ignore = ignore or z.x1 >= len(z.x) or z.x2 >= len(z.x) or z.y1 >= len(z.y) or z.y2 >= len(z.y) 
+                    if ignore:
+                        tl = "no"
+                    else:
+                        print(z)
+                        # Why this inverted index?
+                        tl = f"{z.x1} {z.x2}  l{list(z.x)[z.x1]} r{list(z.x)[z.x2]}  {z.y1} {z.y2}   l{list(z.y)[z.y1]} r{list(z.y)[z.y2]} "
+                    # Check if x1 and x2 are the highest two values.
+                    l[k].append(tl)
+                    # uniques[k].add(hexify(data))
+                    # uniques[k].add(tl)
         if l:
             lp += 1
             for r, l in enumerate(zip(*l.values())):

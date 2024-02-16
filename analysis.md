@@ -123,3 +123,17 @@ For Metapen M2 and Slim Pen 2:
 63804   8256 
 65103   2064 
 ```
+
+## IptsMagnitude
+```
+ 2A 13 29 14 01 FF FF FF 00 00 .. u32[n]?
+|x1|y1|x2|y2|-----------|
+```
+- x1 and x2 are always one apart, order varies. They can go to 255 (pen raised?)
+- y1 and y2 are always one apart, order varies. They can go to 255 (pen raised?)
+- Are these measurement strength, one of the patents refers to ratio of the two hightest bins for positioning.
+- Currently `y` is off by 5 values...?  Maybe the `FF` section is larger.
+
+```
+./irpmon_thcbase.py comparison  --limit 1000  ../irp_logs_thcbase/2024_02_11_irp_thcbase_diginfo_3pen/2024_02_11_irp_thcbase_slim_pen_2.log.gz ../irp_logs_thcbase/2024_02_11_irp_thcbase_diginfo_3pen/2024_02_11_irp_thcbase_metapen_m1.log.gz ../irp_logs_thcbase/2024_02_11_irp_thcbase_diginfo_3pen/2024_02_11_irp_thcbase_metapen_m2.log.gz
+```

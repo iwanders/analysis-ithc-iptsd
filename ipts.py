@@ -178,6 +178,8 @@ class ipts_report_header(Base):
 # ------------------------------------------------------------------------
 # What follows is high level data types that capture the previous stuff.
 # ------------------------------------------------------------------------
+IPTS_COLUMNS = 64
+IPTS_ROWS = 44
 
 class IptsReport(Convertible):
     def __init__(self, **kwargs):
@@ -229,7 +231,21 @@ class IptsNoiseMetricsOutput(IptsReport):
 class IptsDataSelection(IptsReport):
     pass
 class IptsMagnitude(IptsReport):
-    pass
+    class ipts_magnitude(Base):
+        _fields_ = [("x1", ctypes.c_uint8),
+                    ("y1", ctypes.c_uint8),
+                    ("x2", ctypes.c_uint8),
+                    ("y2", ctypes.c_uint8),
+                    ("_min255", ctypes.c_int32),
+
+                    ("x", ctypes.c_uint32 * IPTS_COLUMNS),
+                    ("y", ctypes.c_uint32 * IPTS_ROWS),
+                   ]
+    @staticmethod
+    def parse(header, data):
+        v = IptsMagnitude.ipts_magnitude.read(data)
+        assert(v._min255 == -255)
+        return IptsMagnitude(x1=v.x1, x2=v.x2, y1=v.y1, y2=v.y2, x=v.x, y=v.y)
 
 class IptsDftWindow(IptsReport):
     pass
