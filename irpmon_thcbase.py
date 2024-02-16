@@ -421,6 +421,7 @@ def run_comparison(args):
 
     lp = 0
     prevs = {k: 0 for k in keys}
+    uniques = {k: set() for k in keys}
     for i in range(max_i):
         if (lp % 20 == 0):
             lp += 1
@@ -439,6 +440,13 @@ def run_comparison(args):
                     # d = z.ctr - prevs[k]
                     # prevs[k] = z.ctr
                     l[k].append(f"{z.c}  {z.t}  {z.r}")
+                if isinstance(z, IptsPenDetection) and True:
+                    # l[k].append(f"{z.d1}  {z.d2} {z.d1 - z.d2}  {z.f1} {z.f2}")
+                    # tl = f"{z.d1: >5d}  {z.d2: >5d} "
+                    tl = f"{z.f1}  {z.f2} {list(z.fn)} "
+                    l[k].append(tl)
+                    # uniques[k].add(hexify(data))
+                    uniques[k].add(tl)
         if l:
             lp += 1
             for r, l in enumerate(zip(*l.values())):
@@ -446,6 +454,9 @@ def run_comparison(args):
                     print("--")
                 print("".join(f"{x: >50s}" for x in l))
 
+    for k in keys:
+        print(k)
+        print("\n".join(x for x in sorted(list(uniques[k]))))
 
         
 def run_things(args):

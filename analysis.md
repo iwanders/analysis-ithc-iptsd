@@ -84,3 +84,42 @@ Seq; Counter only got below 16 bit counts in recording. Seq matches IptsPenMetad
 - R: Follows C? T at `0x01` has this at `0x06`, sequence is: `0x06, 0x07, 0x09, 0x0a, 0x0a, 0x0b, 0x08`
 
 No differences between the pens.
+
+## IptsPenDetection
+16 bytes
+```
+ 10 0c 01 00 c8 13 01 00 01 00 00 00 02 0d 08 80 
+| D1  |F1|--| D2  |F2|.... Fn...
+```
+D1 and D2 seem to be values relating to each other.
+Unique D1 & D2 pairs, for Metapen M1:
+```
+  920    328 
+ 1100      0 
+ 2200      0 
+ 5652   5012 
+12352  20256 
+16561  23666 
+19365  18728 
+22608  20048 
+32998  32850 
+38730  37456 
+63804   8256 
+```
+
+For Metapen M2 and Slim Pen 2:
+```
+  920    328 
+ 1100      0 
+ 2200      0 
+ 3088   5064 
+ 5652   5012 
+12352  20256 
+16561  23666 
+19365  18728 
+22608  20048 
+32998  32850 
+38730  37456 
+63804   8256 
+65103   2064 
+```

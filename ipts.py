@@ -266,7 +266,26 @@ class IptsPenMetadata(IptsReport):
         return IptsPenMetadata(c=z.c, t=z.t, r=z.r)
 
 class IptsPenDetection(IptsReport):
-    pass
+    """
+     10 0c 01 00 c8 13 01 00 01 00 00 00 02 0d 08 80 
+    | D1  |F1|--| D2  |F2|.... Fn...
+    """
+    class ipts_pen_detect(Base):
+        _fields_ = [("d1", ctypes.c_uint16),
+                    ("f1", ctypes.c_uint8),
+                    ("_0", ctypes.c_uint8),
+                    ("d2", ctypes.c_uint16),
+                    ("f2", ctypes.c_uint8),
+                    ("fn", ctypes.c_uint8 * 8),
+                    ("_80", ctypes.c_uint8),
+                   ]
+    @staticmethod
+    def parse(header, data):
+        z = IptsPenDetection.ipts_pen_detect.read(data)
+        assert(z._0 == 0)
+        assert(z._80 == 0x80)
+        return IptsPenDetection(d1=z.d1, f1=z.f1, d2=z.d2, f2=z.f2, fn=z.fn)
+
 class IptsPenLift(IptsReport):
     pass
 
