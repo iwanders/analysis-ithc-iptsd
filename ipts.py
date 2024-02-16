@@ -23,6 +23,9 @@ class ReportType(Enum):
     IPTS_REPORT_TYPE_STYLUS_V1                = 0x10
     IPTS_REPORT_TYPE_STYLUS_V2                = 0x60
     IPTS_REPORT_TYPE_FREQUENCY_NOISE          = 0x04
+    # ??                                      = 0x56
+    # Comes in with IRP first byte of 10 (0x0a)
+    # Only seen in 2024_02_11_irp_thcbase_metapen_m2.log
     IPTS_REPORT_TYPE_PEN_GENERAL              = 0x57
     IPTS_REPORT_TYPE_PEN_JNR_OUTPUT           = 0x58
     IPTS_REPORT_TYPE_PEN_NOISE_METRICS_OUTPUT = 0x59
@@ -203,7 +206,23 @@ class IptsNoiseStylusV2(IptsReport):
 class IptsFrequencyNoise(IptsReport):
     pass
 class IptsPenGeneral(IptsReport):
-    pass
+    # 50 4e 4a 00 9a 99 99 41  49 9e 00 00 00 00 01 02
+    #| A         |            | B   |
+    # A = increments either with 288269
+    class ipts_pen_general(Base):
+        _fields_ = [("ctr", ctypes.c_uint32),
+                    ("_9a999941", ctypes.c_uint32),
+                    ("seq", ctypes.c_uint16),
+                    ("_0", ctypes.c_uint32), ("_1", ctypes.c_uint8), ("something", ctypes.c_uint8),
+                   ]
+    @staticmethod
+    def parse(header, data):
+        z = IptsPenGeneral.ipts_pen_general.read(data)
+        assert(z._9a999941 == 0x4199999a)
+        assert(z._0 == 0)
+        assert(z._1 == 1)
+        return IptsPenGeneral(ctr=z.ctr,seq=z.seq, something=z.something)
+    
 
 class IptsJNROutput(IptsReport):
     pass

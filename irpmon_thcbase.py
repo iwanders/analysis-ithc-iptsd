@@ -261,8 +261,10 @@ def chunk_writer(out_path, data_records):
     return full
         
 
-def load_file(in_file):
-    cache_file = os.path.join("/tmp/", os.path.abspath(in_file).replace("/", "_").replace(".bin.gz", ".pickle"))
+def load_file(in_file, limit=None):
+    limit = None if limit is None else int(limit)
+    limit_string = "" if limit is None else str(limit)
+    cache_file = os.path.join("/tmp/", os.path.abspath(in_file).replace("/", "_").replace(".gz", f"{limit_string}.pickle"))
     cache_enabled = True
     if os.path.isfile(cache_file) and cache_enabled:
         with open(cache_file, "rb") as f:
@@ -272,8 +274,8 @@ def load_file(in_file):
         with opener(in_file, "rb") as f:
             records = parse_log_file(codecs.iterdecode(f, encoding='utf-8', errors='ignore'), target_driver="\Driver\IntelTHCBase")
         with open(cache_file, "wb") as f:
-            pickle.dump(records, f)
-    return records
+            pickle.dump(records[0:limit], f)
+    return records[0:limit]
 
 def discard_pnp(records):
     filtered = []
@@ -301,7 +303,7 @@ def discard_outgoing(records):
     
 
 def run_convert(args):
-    records = load_file(args.in_file)
+    records = load_file(args.in_file, limit=args.limit)
     data = discard_outgoing(records)
     iptsd_dumper(args.out_file, data_record_truncator(filter_iptsd_frames(data)))
 
@@ -309,7 +311,7 @@ RED = "\033[0;31m"
 GREEN = "\033[0;32m"
 RESET = "\033[0m"
 def run_print_setup(args):
-    records = load_file(args.in_file)
+    records = load_file(args.in_file, limit=args.limit)
     records = discard_pnp(records)
     prev_data = None
     # data = discard_outgoing(records)
@@ -342,7 +344,7 @@ def run_print_setup(args):
 
 
 def run_print_requests(args):
-    records = load_file(args.in_file)
+    records = load_file(args.in_file, limit=args.limit)
     records = discard_pnp(records)
     # data = discard_outgoing(records)
     for i, r in enumerate(records):
@@ -358,7 +360,7 @@ def run_print_requests(args):
         print(hexdump(r.data))
 
 def run_extract_data(args):
-    records = load_file(args.in_file)
+    records = load_file(args.in_file, limit=args.limit)
     data = discard_outgoing(records)
     upto = int(args.upto)
     mid = int(len(data)/2) if args.index is None else int(args.index)
@@ -366,7 +368,7 @@ def run_extract_data(args):
 
 
 def run_decomposition(args):
-    records = load_file(args.in_file)
+    records = load_file(args.in_file, limit=args.limit)
     data = discard_outgoing(records)
 
     def write(i, n, data):
@@ -374,6 +376,7 @@ def run_decomposition(args):
             return
         if args.end_index is not None and i >= args.end_index:
             return
+        os.makedirs(args.dump_chunks, exist_ok=True) 
         if args.dump_chunks:
             with open(os.path.join(args.dump_chunks, f"{i:0>8d}_{n}.bin"), "wb") as f:
                 f.write(bytearray(data))
@@ -391,10 +394,50 @@ def run_decomposition(args):
             else:
                 write(i, f"i0x{irp_header.type:0>2x}_{ri:0>2d}_t0x{header.type:0>2x}_{type(z).__name__}", data)
                 print(f"    {type(z).__name__}  {hex(header.type)}, {header}")
-                
-                
 
 
+
+def run_comparison(args):
+    clean_data = {}
+    all_files = [args.in_file] + args.in_files
+    for f in all_files:
+        records = load_file(f, limit=args.limit)
+        data = discard_outgoing(records)
+        # Advance all to an 0x1a
+        for i in range(len(data)):
+            if data[i][0] == 0x1a:
+                break;
+        data = data[i:]
+        # Filter a few weird IRP data entries on the first byte.
+        data = [x for x in data if x[0] != 110 and x[0] != 7 and x[0] != 10]
+        clean_data[os.path.basename(f)] = data
+
+    i = 0
+    max_i = min(len(x) for x in clean_data.values())
+    keys = sorted(list(clean_data.keys()))
+
+    lp = 0
+    prevs = {k: 0 for k in keys}
+    for i in range(max_i):
+        if (lp % 20 == 0):
+            lp += 1
+            print("".join(f"{x: >60s}" for x in keys))
+
+        l = []
+        for k in keys:
+            irp_header, reports = parse_irp(clean_data[k][i])
+            for ri, (header, data) in enumerate(reports):
+                z = interpret_report(header, data)
+                if isinstance(z, IptsPenGeneral):
+                    d = z.ctr - prevs[k]
+                    prevs[k] = z.ctr
+                    l.append(f"{d}  {z.ctr}  {z.seq}   {z.something}")
+        if l:
+            lp += 1
+            print("".join(f"{x: >60s}" for x in l))
+
+
+        
 def run_things(args):
     records = load_file(args.in_file)
     data = discard_outgoing(records)
@@ -410,6 +453,7 @@ if __name__ == '__main__':
     def subparser_with_default(name):
         sub = subparsers.add_parser(name)
         sub.add_argument("in_file", help="The file to read from.")
+        sub.add_argument("--limit", default=None, help="Limit files records to this value")
         return sub
 
     convert_parser = subparser_with_default('convert')
@@ -426,6 +470,11 @@ if __name__ == '__main__':
     decomposition_parser.add_argument("--start-index", help="Start writing from this index", default=0, type=int)
     decomposition_parser.add_argument("--end-index", help="Stop writing at this index", default=None, type=int)
     decomposition_parser.set_defaults(func=run_decomposition)
+
+
+    comparison_parser = subparser_with_default('comparison')
+    comparison_parser.add_argument("in_files", help="The file to read from.", nargs="+")
+    comparison_parser.set_defaults(func=run_comparison)
 
     print_setup = subparser_with_default('print_setup')
     print_setup.set_defaults(func=run_print_setup)

@@ -4,6 +4,9 @@ First bytes of messages coming from the driver.
 
 The multiple records on `0x1a` is not a bug in the parser, data actually contains this, and it appears to be unique.
 
+
+This pattern, and the sizes of individual packets are identical between Slim Pen2, Metapen M1, Metapen M2.
+
 ```
 0x1a: {'type': 26, 'unknown': 0, 'size': 4318, 'outer_size': 4311}
     IptsPenMetadata  0x5f, {'type': 95, 'flags': 0, 'size': 16}
@@ -53,6 +56,22 @@ The multiple records on `0x1a` is not a bug in the parser, data actually contain
     IptsDataSelection  0x5a, {'type': 90, 'flags': 0, 'size': 148}
     IptsDftWindowPosition2  0x5c, {'type': 92, 'flags': 0, 'size': 972}
     IptsPenDetection  0x62, {'type': 98, 'flags': 0, 'size': 16}
-
-
 ```
+
+In messages, following, let `----` denote never changes.
+
+## IptsPenGeneral
+64 bytes
+```
+ 50 4e 4a 00 9a 99 99 41  49 9e 00 00 00 00 01 02 FF FF ...
+|A          |------------|seq  |--------------|  |------
+```
+A: 16 bit counter:
+  - Slim pen 2 increments at 288207-288358
+  - Metapen M1 increments at 287894-289429
+  - Metapen M2 increments at 287894-288279
+Seq could be >16 bits, only got below 16 bit counts in recording.
+
+
+
+
