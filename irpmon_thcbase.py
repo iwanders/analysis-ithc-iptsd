@@ -24,6 +24,9 @@ def hexdump(data, columns=64):
     for row in chunks(data, columns):
         print("".join(f"{z:0>2x} " for z in row))
 
+def hexify(data):
+    return "".join(f"{z:0>2x} " for z in data)
+
 # Helper to hold the relevant fields from the log records.
 Irp = namedtuple("Irp", [
     # The index of this Irp record in the original file.
@@ -421,20 +424,27 @@ def run_comparison(args):
     for i in range(max_i):
         if (lp % 20 == 0):
             lp += 1
-            print("".join(f"{x: >60s}" for x in keys))
+            print("".join(f"{x: >50s}" for x in keys))
 
-        l = []
+        l = {k: [] for k in keys}
         for k in keys:
             irp_header, reports = parse_irp(clean_data[k][i])
             for ri, (header, data) in enumerate(reports):
                 z = interpret_report(header, data)
-                if isinstance(z, IptsPenGeneral):
+                if isinstance(z, IptsPenGeneral) and True:
                     d = z.ctr - prevs[k]
                     prevs[k] = z.ctr
-                    l.append(f"{d}  {z.ctr}  {z.seq}   {z.something}")
+                    l[k].append(f"{d}  {z.ctr}  {RED}{z.seq}{RESET}   {z.something}")
+                if isinstance(z, IptsPenMetadata) and True:
+                    # d = z.ctr - prevs[k]
+                    # prevs[k] = z.ctr
+                    l[k].append(f"{z.c}  {z.t}  {z.r}")
         if l:
             lp += 1
-            print("".join(f"{x: >60s}" for x in l))
+            for r, l in enumerate(zip(*l.values())):
+                if (r != 0):
+                    print("--")
+                print("".join(f"{x: >50s}" for x in l))
 
 
         

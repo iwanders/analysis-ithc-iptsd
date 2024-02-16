@@ -205,10 +205,8 @@ class IptsNoiseStylusV2(IptsReport):
     pass
 class IptsFrequencyNoise(IptsReport):
     pass
+
 class IptsPenGeneral(IptsReport):
-    # 50 4e 4a 00 9a 99 99 41  49 9e 00 00 00 00 01 02
-    #| A         |            | B   |
-    # A = increments either with 288269
     class ipts_pen_general(Base):
         _fields_ = [("ctr", ctypes.c_uint32),
                     ("_9a999941", ctypes.c_uint32),
@@ -249,7 +247,26 @@ class IptsMultipleRegion(IptsReport):
 class IptsTouchedAntennas(IptsReport):
     pass
 class IptsPenMetadata(IptsReport):
-    pass
+    class ipts_pen_metadata(Base):
+        _fields_ = [("c", ctypes.c_uint16),
+                    ("_0", ctypes.c_uint16),
+                    ("t", ctypes.c_uint8),
+                    ("r", ctypes.c_uint8),
+                    ("_6", ctypes.c_uint8), ("_1", ctypes.c_uint8), ("_ff", ctypes.c_uint64),
+                   ]
+    @staticmethod
+    def parse(header, data):
+        z = IptsPenMetadata.ipts_pen_metadata.read(data)
+        assert(z._0 == 0)
+        assert(z._6 == 6)
+        assert(z._1 == 1)
+        assert(z._ff == 0xffffffffffffffff)
+        t_seq = (0x01, 0x04, 0x02, 0x05, 0x06, 0x0a, 0x0d)
+        r_seq = (0x06, 0x07, 0x09, 0x0a, 0x0a, 0x0b, 0x08)
+        assert(z.t in t_seq)
+        assert(z.r == dict(zip(t_seq, r_seq))[z.t])
+        return IptsPenMetadata(c=z.c, t=z.t, r=z.r)
+
 class IptsPenDetection(IptsReport):
     pass
 class IptsPenLift(IptsReport):

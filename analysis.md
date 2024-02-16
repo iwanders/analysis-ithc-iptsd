@@ -73,5 +73,14 @@ A: 16 bit counter:
 Seq could be >16 bits, only got below 16 bit counts in recording.
 
 
+## IptsPenMetadata
+16 bytes
+```
+ 23 9d 00 00 01 06 06 01 ff ff ff ff ff ff ff ff
+|C    |     |T |R |------------------------------
+```
+C: Increments, but only every 7 entries, This matches seq from IptsPenGeneral
+T: C increments if this is `0x01`, sequence is             `0x01, 0x04, 0x02, 0x05, 0x06, 0x0a, 0x0d`
+R: Follows C? T at `0x01` has this at `0x06`, sequence is: `0x06, 0x07, 0x09, 0x0a, 0x0a, 0x0b, 0x08`
 
-
+No differences between the pens.
