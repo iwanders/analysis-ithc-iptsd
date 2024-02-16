@@ -431,11 +431,11 @@ def run_comparison(args):
             irp_header, reports = parse_irp(clean_data[k][i])
             for ri, (header, data) in enumerate(reports):
                 z = interpret_report(header, data)
-                if isinstance(z, IptsPenGeneral) and True:
+                if isinstance(z, IptsPenGeneral) and False:
                     d = z.ctr - prevs[k]
                     prevs[k] = z.ctr
                     l[k].append(f"{d}  {z.ctr}  {RED}{z.seq}{RESET}   {z.something}")
-                if isinstance(z, IptsPenMetadata) and True:
+                if isinstance(z, IptsPenMetadata) and False:
                     # d = z.ctr - prevs[k]
                     # prevs[k] = z.ctr
                     l[k].append(f"{z.c}  {z.t}  {z.r}")

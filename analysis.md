@@ -64,23 +64,23 @@ In messages, following, let `----` denote never changes.
 64 bytes
 ```
  50 4e 4a 00 9a 99 99 41  49 9e 00 00 00 00 01 02 FF FF ...
-|A          |------------|seq  |--------------|  |------
+|A          |------------|seq        |--------|  |------
 ```
 A: 16 bit counter:
   - Slim pen 2 increments at 288207-288358
   - Metapen M1 increments at 287894-289429
   - Metapen M2 increments at 287894-288279
-Seq could be >16 bits, only got below 16 bit counts in recording.
+Seq; Counter only got below 16 bit counts in recording. Seq matches IptsPenMetadata.C
 
 
 ## IptsPenMetadata
 16 bytes
 ```
  23 9d 00 00 01 06 06 01 ff ff ff ff ff ff ff ff
-|C    |     |T |R |------------------------------
+|C          |T |R |------------------------------
 ```
-C: Increments, but only every 7 entries, This matches seq from IptsPenGeneral
-T: C increments if this is `0x01`, sequence is             `0x01, 0x04, 0x02, 0x05, 0x06, 0x0a, 0x0d`
-R: Follows C? T at `0x01` has this at `0x06`, sequence is: `0x06, 0x07, 0x09, 0x0a, 0x0a, 0x0b, 0x08`
+- C: Increments, but only every 7 entries, This matches seq from IptsPenGeneral.
+- T: C increments if this is `0x01`, sequence is             `0x01, 0x04, 0x02, 0x05, 0x06, 0x0a, 0x0d`
+- R: Follows C? T at `0x01` has this at `0x06`, sequence is: `0x06, 0x07, 0x09, 0x0a, 0x0a, 0x0b, 0x08`
 
 No differences between the pens.

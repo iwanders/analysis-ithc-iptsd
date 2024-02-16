@@ -210,8 +210,8 @@ class IptsPenGeneral(IptsReport):
     class ipts_pen_general(Base):
         _fields_ = [("ctr", ctypes.c_uint32),
                     ("_9a999941", ctypes.c_uint32),
-                    ("seq", ctypes.c_uint16),
-                    ("_0", ctypes.c_uint32), ("_1", ctypes.c_uint8), ("something", ctypes.c_uint8),
+                    ("seq", ctypes.c_uint32),
+                    ("_0", ctypes.c_uint16), ("_1", ctypes.c_uint8), ("something", ctypes.c_uint8),
                    ]
     @staticmethod
     def parse(header, data):
@@ -248,8 +248,7 @@ class IptsTouchedAntennas(IptsReport):
     pass
 class IptsPenMetadata(IptsReport):
     class ipts_pen_metadata(Base):
-        _fields_ = [("c", ctypes.c_uint16),
-                    ("_0", ctypes.c_uint16),
+        _fields_ = [("c", ctypes.c_uint32),
                     ("t", ctypes.c_uint8),
                     ("r", ctypes.c_uint8),
                     ("_6", ctypes.c_uint8), ("_1", ctypes.c_uint8), ("_ff", ctypes.c_uint64),
@@ -257,7 +256,6 @@ class IptsPenMetadata(IptsReport):
     @staticmethod
     def parse(header, data):
         z = IptsPenMetadata.ipts_pen_metadata.read(data)
-        assert(z._0 == 0)
         assert(z._6 == 6)
         assert(z._1 == 1)
         assert(z._ff == 0xffffffffffffffff)
