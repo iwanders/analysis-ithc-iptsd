@@ -229,7 +229,16 @@ class IptsJNROutput(IptsReport):
 class IptsNoiseMetricsOutput(IptsReport):
     pass
 class IptsDataSelection(IptsReport):
-    pass
+    class ipts_data_selection(Base):
+        _fields_ = [("H", ctypes.c_uint32),
+                    ("K", ctypes.c_uint32),
+                   ]
+    @staticmethod
+    def parse(header, data):
+        v = IptsDataSelection.ipts_data_selection.read(data)
+
+        return IptsDataSelection(**v.as_dict())
+
 class IptsMagnitude(IptsReport):
     class ipts_magnitude(Base):
         _fields_ = [("x1", ctypes.c_uint8),
@@ -251,8 +260,24 @@ class IptsMagnitude(IptsReport):
         assert(v._mid2 == 0)
         return IptsMagnitude(x1=v.x1, x2=v.x2, y1=v.y1, y2=v.y2, x=v.x, y=v.y)
 
+_dft_types = {}
 class IptsDftWindow(IptsReport):
-    pass
+    @staticmethod
+    def parse(header, data):
+        header, data = ipts_pen_dft_window.pop(data)
+        xs = []
+        ys = []
+        for i in range(header.num_rows):
+            row, data = ipts_pen_dft_window_row.pop(data)
+            xs.append(row)
+        for i in range(header.num_rows):
+            row, data = ipts_pen_dft_window_row.pop(data)
+            ys.append(row)
+        
+        use_type = _dft_types.get(header.data_type, IptsDftWindow)
+
+        return use_type(header=header, x=xs, y=ys)
+
 class IptsDftWindowPressure(IptsDftWindow):
     pass
 class IptsDftWindowPosition(IptsDftWindow):
@@ -261,6 +286,13 @@ class IptsDftWindowPosition2(IptsDftWindow):
     pass
 class IptsDftWindowButton(IptsDftWindow):
     pass
+
+_dft_types.update({
+    DftType.IPTS_DFT_ID_POSITION._value_: IptsDftWindowPosition,
+    DftType.IPTS_DFT_ID_POSITION2._value_: IptsDftWindowPosition2,
+    DftType.IPTS_DFT_ID_BUTTON._value_: IptsDftWindowButton,
+    DftType.IPTS_DFT_ID_PRESSURE._value_: IptsDftWindowPressure,
+})
 
 class IptsMultipleRegion(IptsReport):
     pass
@@ -276,9 +308,10 @@ class IptsPenMetadata(IptsReport):
     @staticmethod
     def parse(header, data):
         z = IptsPenMetadata.ipts_pen_metadata.read(data)
-        assert(z._6 == 6)
+        assert(z._6 == 6 or z._6 == 3) # Also seen with 3!?! in 2024_02_11_irp_thcbase_slim_pen_2
         assert(z._1 == 1)
         assert(z._ff == 0xffffffffffffffff)
+        # t_seq found a new one here, 0 in  2024_02_11_irp_thcbase_slim_pen_2
         t_seq = (0x01, 0x04, 0x02, 0x05, 0x06, 0x0a, 0x0d)
         r_seq = (0x06, 0x07, 0x09, 0x0a, 0x0a, 0x0b, 0x08)
         assert(z.t in t_seq)
@@ -308,28 +341,6 @@ class IptsPenDetection(IptsReport):
 
 class IptsPenLift(IptsReport):
     pass
-
-class IptsDftWindow(IptsReport):
-    @staticmethod
-    def parse(header, data):
-        header, data = ipts_pen_dft_window.pop(data)
-        xs = []
-        ys = []
-        for i in range(header.num_rows):
-            row, data = ipts_pen_dft_window_row.pop(data)
-            xs.append(row)
-        for i in range(header.num_rows):
-            row, data = ipts_pen_dft_window_row.pop(data)
-            ys.append(row)
-        dft_types = {
-            DftType.IPTS_DFT_ID_POSITION._value_: IptsDftWindowPosition,
-            DftType.IPTS_DFT_ID_POSITION2._value_: IptsDftWindowPosition2,
-            DftType.IPTS_DFT_ID_BUTTON._value_: IptsDftWindowButton,
-            DftType.IPTS_DFT_ID_PRESSURE._value_: IptsDftWindowPressure,
-        }
-        use_type = dft_types.get(header.data_type, IptsDftWindow)
-
-        return use_type(header=header, x=xs, y=ys)
 
 report_parsers = {
     ReportType.IPTS_REPORT_TYPE_TIMESTAMP._value_:IptsTimestamp,
