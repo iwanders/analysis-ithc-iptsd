@@ -5,6 +5,11 @@ from enum import Enum
 from collections import namedtuple
 
 
+# ------------------------------------------------------------------------
+# Known constants.
+# ------------------------------------------------------------------------
+
+
 class DftType(Enum):
     IPTS_DFT_ID_POSITION = 6
     IPTS_DFT_ID_POSITION2 = 7
@@ -37,8 +42,16 @@ class ReportType(Enum):
     IPTS_REPORT_TYPE_PEN_METADATA             = 0x5f
     IPTS_REPORT_TYPE_PEN_DETECTION            = 0x62
     IPTS_REPORT_TYPE_PEN_LIFT                 = 0x63
+
+    # Added this for uniform handling.
+    IPTS_REPORT_TYPE_TERMINATION              = 0xff
     def __lt__(self, o):
         self._value_ < o._value_
+
+
+# ------------------------------------------------------------------------
+# Helper utilities
+# ------------------------------------------------------------------------
 
 
 # Convenience mixin to allow construction of struct from a byte like object.
@@ -68,6 +81,8 @@ class Convertible:
                 return o
             elif isinstance(z, (bool, str, int, float, type(None))):
                 return z
+            elif isinstance(z, bytes):
+                return [v for v in z]
             else:
                 raise BaseException(f"unhandled type {type(z)}")
                 
@@ -90,20 +105,16 @@ class Base(ctypes.LittleEndianStructure, Readable, Convertible):
         obtained = cls.read(data)
         return obtained, data[ctypes.sizeof(obtained):]
 
-class DeviceInfo(Base):
-    _fields_ = [("vendor", ctypes.c_uint16),
-                ("product", ctypes.c_uint16),
-                ("padding", ctypes.c_uint8 * 4),
-                ("buffer_size", ctypes.c_uint64),
-               ]
 
-    @staticmethod
-    def from_dump():
-        a = "5E 04 52 0C 00 00 00 00 3F 1D 00 00 00 00 00 00"
-        a = bytearray([int(z, 16) for z in a.split()]);
-        return DeviceInfo.read(a)
+# ------------------------------------------------------------------------
+# These are from iptsd
+# ------------------------------------------------------------------------
 
-# Header: info, has_metadata(u8), metadata
+IPTS_DFT_NUM_COMPONENTS = 9
+IPTS_DFT_PRESSURE_ROWS  = 6
+IPTS_COLUMNS = 64
+IPTS_ROWS = 44
+
 
 class ipts_touch_metadata_size(Base):
     _fields_ = [("rows", ctypes.c_uint32),
@@ -134,8 +145,6 @@ class ipts_pen_dft_window(Base):
                 ("_reserved2", ctypes.c_uint8 * 2),
                ]
 
-IPTS_DFT_NUM_COMPONENTS = 9
-IPTS_DFT_PRESSURE_ROWS  = 6
 
 class ipts_pen_dft_window_row(Base):
     _fields_ = [("frequency", ctypes.c_uint32),
@@ -149,6 +158,29 @@ class ipts_pen_dft_window_row(Base):
                ]
 
 
+
+
+class ipts_report_header(Base):
+    _fields_ = [("type", ctypes.c_uint8),
+                ("flags", ctypes.c_uint8),
+                ("size", ctypes.c_uint16)
+               ]
+
+# This is from linux-surface ipts
+class DeviceInfo(Base):
+    _fields_ = [("vendor", ctypes.c_uint16),
+                ("product", ctypes.c_uint16),
+                ("padding", ctypes.c_uint8 * 4),
+                ("buffer_size", ctypes.c_uint64),
+               ]
+
+    @staticmethod
+    def from_dump():
+        a = "5E 04 52 0C 00 00 00 00 3F 1D 00 00 00 00 00 00"
+        a = bytearray([int(z, 16) for z in a.split()]);
+        return DeviceInfo.read(a)
+
+# Header: info, has_metadata(u8), metadata
 
 class Metadata(Base):
     _fields_ = [("ipts_touch_metadata_size", ipts_touch_metadata_size),
@@ -167,19 +199,10 @@ class Metadata(Base):
         a = bytearray([int(z, 16) for z in a.split()]);
         return Metadata.read(a)
 
-
-class ipts_report_header(Base):
-    _fields_ = [("type", ctypes.c_uint8),
-                ("flags", ctypes.c_uint8),
-                ("size", ctypes.c_uint16)
-               ]
-
-
 # ------------------------------------------------------------------------
 # What follows is high level data types that capture the previous stuff.
 # ------------------------------------------------------------------------
-IPTS_COLUMNS = 64
-IPTS_ROWS = 44
+
 
 class IptsReport(Convertible):
     def __init__(self, **kwargs):
@@ -298,8 +321,9 @@ class IptsMagnitude(IptsReport):
     def parse(header, data):
         v = IptsMagnitude.ipts_magnitude.read(data)
         assert(v._min255 == -255)
-        assert(v._mid1 == 0)
-        assert(v._mid2 == 0)
+        # mid1 == 1 and mid2 == 2 seen in diagonal.bin
+        # assert(v._mid1 == 0)
+        # assert(v._mid2 == 0)
         return IptsMagnitude(x1=v.x1, x2=v.x2, y1=v.y1, y2=v.y2, x=v.x, y=v.y)
 
 _dft_types = {}
@@ -384,6 +408,15 @@ class IptsPenDetection(IptsReport):
 class IptsPenLift(IptsReport):
     pass
 
+class IptsTermination(IptsReport):
+    class ipts_termination(Base):
+        _fields_ = [("_v", ctypes.c_uint32)]
+    @staticmethod
+    def parse(header, data):
+        z = IptsTermination.ipts_termination.read(data)
+        assert(z._v == 0)
+        return IptsTermination()
+
 report_parsers = {
     ReportType.IPTS_REPORT_TYPE_TIMESTAMP._value_:IptsTimestamp,
     ReportType.IPTS_REPORT_TYPE_DIMENSIONS._value_:IptsDimensions,
@@ -402,8 +435,95 @@ report_parsers = {
     ReportType.IPTS_REPORT_TYPE_PEN_METADATA._value_:IptsPenMetadata,
     ReportType.IPTS_REPORT_TYPE_PEN_DETECTION._value_:IptsPenDetection,
     ReportType.IPTS_REPORT_TYPE_PEN_LIFT._value_:IptsPenLift,
+    ReportType.IPTS_REPORT_TYPE_TERMINATION._value_:IptsTermination,
 }
 
 def interpret_report(header, data):
     p = report_parsers.get(header.type, IptsReport)
     return p.parse(header, data)
+
+# ------------------------------------------------------------------------
+# The base HID frame handling.
+# ------------------------------------------------------------------------
+
+class HIDReportFrame(Base):
+    _fields_ = [("type", ctypes.c_uint8),
+                ("unknown", ctypes.c_uint16),
+                ("size", ctypes.c_uint32),
+                ("_pad", ctypes.c_uint8 * 3),
+                ("outer_size", ctypes.c_uint32),
+                ("_pad2", ctypes.c_uint8 * 15),
+               ]
+
+def parse_hid_report(data):
+    irp_header, remainder, discard = HIDReportFrame.pop_size(data)
+    # print(discard)
+    reports = []
+    while remainder:
+        report_header, data, remainder = ipts_report_header.pop_size(remainder)
+        if report_header.type == 0xff: # seems to be termination
+            # print(report_header, data)
+            reports.append((report_header, data))
+            break
+        reports.append((report_header, data))
+    return irp_header, reports
+
+# ------------------------------------------------------------------------
+# IPTSD binary format helpers.
+# ------------------------------------------------------------------------
+def iptsd_write(out_path, hid_frames):
+    metadata = Metadata.from_dump()
+    device_info = DeviceInfo.from_dump()
+    with open(out_path, "wb") as f:
+        f.write(bytes(device_info))
+        f.write(bytearray([1]))
+        f.write(bytes(metadata))
+        for hid_header, reports in hid_frames:
+            frame_bytes = bytearray(hid_header)
+            
+            for report_header, report_data in reports:
+                frame_bytes += bytes(report_header)
+                frame_bytes += bytes(report_data)
+
+            size = len(frame_bytes)
+            z = struct.pack("Q", size)
+            f.write(z)
+            f.write(frame_bytes)
+
+                
+            f.write(bytearray([0] * (device_info.buffer_size - size)))
+
+def iptsd_read(in_path):
+    with open(in_path, "rb") as f:
+        data = f.read()
+    device_info, data = DeviceInfo.pop(data)
+    has_metadata, data = data[0], data[1:]
+    metadata = None
+    if has_metadata:
+        metadata, data = Metadata.pop(data)
+    packets = []
+    i = 0
+    while (len(data) - i) >= device_info.buffer_size:
+        record_len = struct.unpack_from("Q", data, i)[0]
+        si = i + struct.calcsize("Q")
+        record_data = data[si:si + record_len]
+        hid_header, reports = parse_hid_report(record_data)
+        i += struct.calcsize("Q") + device_info.buffer_size
+        packets.append((hid_header, reports))
+
+    return packets
+
+if __name__ == "__main__":
+    # Test iptsd roundtrip.
+    import sys
+    records1 = iptsd_read(sys.argv[1])
+    t1 = "/tmp/tmp_iptsd_write_test.bin"
+    t2 = "/tmp/tmp_iptsd_write_test2.bin"
+    iptsd_write(t1, records1)
+    records2 = iptsd_read(t1)
+    iptsd_write(t2, records2)
+    with open(t1, "rb") as f:
+        d1 = f.read()
+    with open(t2, "rb") as f:
+        d2 = f.read()
+    assert(d1 == d2)

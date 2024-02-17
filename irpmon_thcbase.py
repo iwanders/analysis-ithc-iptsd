@@ -172,35 +172,6 @@ def discard_record_data(d):
     return Irp(**z)
 
 
-
-# The actual IRP header.
-class IRPStart(Base):
-    _fields_ = [("type", ctypes.c_uint8),
-                ("unknown", ctypes.c_uint16),
-                ("size", ctypes.c_uint32),
-                ("_pad", ctypes.c_uint8 * 3),
-                ("outer_size", ctypes.c_uint32),
-                ("_pad2", ctypes.c_uint8 * 15),
-               ]
-
-    # Function to clip data using the IRP header, resulting holds IPTS reports.
-    def clip_data(self, data):
-        return data[ctypes.sizeof(self):3+self.size]
-
-
-
-def parse_irp(data):
-    irp_header, remainder, discard = IRPStart.pop_size(data)
-    # print(discard)
-    reports = []
-    while remainder:
-        report_header, data, remainder = ipts_report_header.pop_size(remainder)
-        if report_header.type == 0xff: # seems to be termination
-            break
-        reports.append((report_header, data))
-    return irp_header, reports
-
-
 def data_record_truncator(data_records):
     # peek at the data, truncate appropriately.
     z = []
@@ -385,7 +356,7 @@ def run_decomposition(args):
                 f.write(bytearray(data))
 
     for i, d in enumerate(data):
-        irp_header, reports = parse_irp(d)
+        irp_header, reports = parse_hid_report(d)
         print(f"0x{irp_header.type:0>2x}: {irp_header}")
         write(i, f"i0x{irp_header.type:0>2x}_000_full", d)
 
@@ -438,7 +409,7 @@ def run_comparison(args):
 
         l = {k: [] for k in keys}
         for k in keys:
-            irp_header, reports = parse_irp(clean_data[k][i])
+            irp_header, reports = parse_hid_report(clean_data[k][i])
             for ri, (header, data) in enumerate(reports):
                 z = interpret_report(header, data)
                 if isinstance(z, IptsPenGeneral) and False:
