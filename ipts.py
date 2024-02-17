@@ -228,16 +228,58 @@ class IptsJNROutput(IptsReport):
     pass
 class IptsNoiseMetricsOutput(IptsReport):
     pass
+
+_datasel_types = {}
 class IptsDataSelection(IptsReport):
-    class ipts_data_selection(Base):
-        _fields_ = [("H", ctypes.c_uint32),
-                    ("K", ctypes.c_uint32),
+    class ipts_data_all_mag(Base):
+        _fields_ = [("mag", ctypes.c_uint32 * 16)]
+    class ipts_data_select_end(Base):
+        _fields_ = [("something_end", ctypes.c_uint32 * 2),
+                    ("indices", ctypes.c_uint8 * 8),
+                    ("_pad", ctypes.c_uint8),
+                    ("dft_type", ctypes.c_uint8),
+                    ("flag_u1", ctypes.c_int8),
+                    ("flag_u2", ctypes.c_int8),
                    ]
     @staticmethod
     def parse(header, data):
-        v = IptsDataSelection.ipts_data_selection.read(data)
+        dft_type = data[-3]
+        parser = _datasel_types.get(dft_type, None)
+        if parser is not None:
+            return parser(header, data)
+        else:
+            x, data = IptsDataSelection.ipts_data_all_mag.pop(data)
+            y, data = IptsDataSelection.ipts_data_all_mag.pop(data)
+            data_sel_end, data = IptsDataSelection.ipts_data_select_end.pop(data)
+            assert(len(data) == 0)
+            z = {}
+            z.update({f"x_{k}": getattr(x, k) for k, t in x._fields_})
+            z.update({f"y_{k}": getattr(y, k) for k, t in y._fields_})
+            z.update(data_sel_end.as_dict())
+            return IptsDataSelectionPos(**z)
 
-        return IptsDataSelection(**v.as_dict())
+
+class IptsDataSelectionPos(IptsDataSelection):
+    class ipts_data_select_pos_dim(Base):
+        _fields_ = [("something", ctypes.c_uint32 * 6),
+                    ("mag_0", ctypes.c_uint32),
+                    ("something", ctypes.c_uint32 * 2),
+                    ("mag_1", ctypes.c_uint32 * 7),
+                   ]
+    @staticmethod
+    def parse(header, data):
+        x, data = IptsDataSelectionPos.ipts_data_select_pos_dim.pop(data)
+        y, data = IptsDataSelectionPos.ipts_data_select_pos_dim.pop(data)
+        data_sel_end, data = IptsDataSelection.ipts_data_select_end.pop(data)
+        assert(len(data) == 0)
+        z = {}
+        z.update({f"x_{k}": getattr(x, k) for k, t in x._fields_})
+        z.update({f"y_{k}": getattr(y, k) for k, t in y._fields_})
+        z.update(data_sel_end.as_dict())
+        return IptsDataSelectionPos(**z)
+    pass
+_datasel_types[DftType.IPTS_DFT_ID_POSITION._value_] = IptsDataSelectionPos.parse
+
 
 class IptsMagnitude(IptsReport):
     class ipts_magnitude(Base):
