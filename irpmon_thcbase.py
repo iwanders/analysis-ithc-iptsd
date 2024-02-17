@@ -486,13 +486,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="irpmontool")
     subparsers = parser.add_subparsers(dest="command")
 
-    def subparser_with_default(name):
-        sub = subparsers.add_parser(name)
+    def subparser_with_default(name, help=None):
+        sub = subparsers.add_parser(name, help=help)
         sub.add_argument("in_file", help="The file to read from.")
         sub.add_argument("--limit", default=None, help="Limit files records to this value")
         return sub
 
-    convert_parser = subparser_with_default('convert')
+    convert_parser = subparser_with_default('convert', help="Convert a irp THCBase log to an iptsd binary dump.")
     convert_parser.add_argument("out_file", help="Output file to write to, default: %(default)s", default="/tmp/out.bin", nargs="?")
     convert_parser.set_defaults(func=run_convert)
 

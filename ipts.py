@@ -438,9 +438,11 @@ report_parsers = {
     ReportType.IPTS_REPORT_TYPE_TERMINATION._value_:IptsTermination,
 }
 
-def interpret_report(header, data):
+
+# Main function to actually interpret a report using the above data.
+def interpret_report(report_header, data):
     p = report_parsers.get(header.type, IptsReport)
-    return p.parse(header, data)
+    return p.parse(report_header, data)
 
 # ------------------------------------------------------------------------
 # The base HID frame handling.
@@ -471,6 +473,8 @@ def parse_hid_report(data):
 # ------------------------------------------------------------------------
 # IPTSD binary format helpers.
 # ------------------------------------------------------------------------
+
+# Write an ipstd file, hid_frames is [[hid_header, [[report_header, report_data],...],...]
 def iptsd_write(out_path, hid_frames):
     metadata = Metadata.from_dump()
     device_info = DeviceInfo.from_dump()
@@ -493,6 +497,7 @@ def iptsd_write(out_path, hid_frames):
                 
             f.write(bytearray([0] * (device_info.buffer_size - size)))
 
+# Read an ipstd file, return is [[hid_header, [[report_header, report_data],...],...]
 def iptsd_read(in_path):
     with open(in_path, "rb") as f:
         data = f.read()
