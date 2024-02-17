@@ -58,6 +58,11 @@ This pattern, and the sizes of individual packets are identical between Slim Pen
     IptsPenDetection  0x62, {'type': 98, 'flags': 0, 'size': 16}
 ```
 
+- DataSelection is always before a DFT window.
+- PenDetection is always after a DFT window.
+- PenGeneral and Magnitude show up in the same block.
+
+
 In messages, following, let `----` denote never changes.
 
 ## IptsPenGeneral
@@ -135,4 +140,49 @@ For Metapen M2 and Slim Pen 2:
 
 ```
 ./irpmon_thcbase.py comparison  --limit 1000  ../irp_logs_thcbase/2024_02_11_irp_thcbase_diginfo_3pen/2024_02_11_irp_thcbase_slim_pen_2.log.gz ../irp_logs_thcbase/2024_02_11_irp_thcbase_diginfo_3pen/2024_02_11_irp_thcbase_metapen_m1.log.gz ../irp_logs_thcbase/2024_02_11_irp_thcbase_diginfo_3pen/2024_02_11_irp_thcbase_metapen_m2.log.gz
+```
+
+## IptsTouchedAntennas
+All zeros in this, but my recordings have pure pen. Seems to again hold C =from IptsPenMetadata, perhaps packed bitmask?
+
+## IptsDataSelection
+Depends on the DFT window, third byte from the end is dft window type. From [imhex.md](./imhex.md):
+
+For the majority of frames, the beginning holds the 16 magnitudes for x and y. The end block is always 12 bytes and holds the dft window type.
+
+```
+match (dft.data_type) {
+  (0x06): datasel_outer<datasel_0x06> data @ addressof(pad);
+  (0x07): datasel_outer<datasel_allmag> data @ addressof(pad);
+  (0x0a): datasel_outer<datasel_allmag> data @ addressof(pad);
+  (0x0b): datasel_outer<datasel_allmag> data @ addressof(pad);
+  (0x08): datasel_outer<datasel_0x08> data @ addressof(pad);
+  (_): datasel_outer<datasel_unknown> data @ addressof(pad);
+} 
+```
+`0x06` is the position dft window, so the most interesting anyways.
+
+```
+struct datasel_end {
+    u32 something[2];
+    u8 indices[8];
+    u8 _pad;
+    u8 dft_type;
+    u8 _01;
+    u8 _ff;
+};
+
+struct datasel_pos_dim{
+    u32 something[6];
+    u32 mag_x0;
+    u32 something2[2];
+    u32 mag_x1[7];
+
+};
+
+struct datasel_0x06 {
+  datasel_pos_dim x;
+  datasel_pos_dim y;
+  datasel_end info;
+};
 ```

@@ -389,10 +389,19 @@ def run_decomposition(args):
         print(f"0x{irp_header.type:0>2x}: {irp_header}")
         write(i, f"i0x{irp_header.type:0>2x}_000_full", d)
 
+        previous_data_selection = []
         for ri, (header, data) in enumerate(reports):
             z = interpret_report(header, data)
-            if isinstance(z, IptsDftWindow):
-                write(i, f"i0x{irp_header.type:0>2x}_{ri:0>2d}_t0x{header.type:0>2x}_{type(z).__name__}_d0x{z.header.data_type:0>2x}", d)
+
+            if isinstance(z, IptsDataSelection):
+                previous_data_selection = data
+                write(i, f"i0x{irp_header.type:0>2x}_{ri:0>2d}_t0x{header.type:0>2x}_{type(z).__name__}", data)
+                print(f"    {type(z).__name__}  {hex(header.type)}, {header}")
+            elif issubclass(type(z), IptsDftWindow):
+                data_sel_with_dft = bytearray(previous_data_selection) + bytearray(data)
+                data_sel_with_dft.extend([0x0] * (2000 - len(data_sel_with_dft)))
+                write(i, f"i0x{irp_header.type:0>2x}_datasel_dft", data_sel_with_dft)
+                write(i, f"i0x{irp_header.type:0>2x}_{ri:0>2d}_t0x{header.type:0>2x}_{type(z).__name__}_d0x{z.header.data_type:0>2x}", data)
                 print(f"    {type(z).__name__}  {hex(header.type)}, {header}, dft data type: 0x{z.header.data_type:0>2x}")
             else:
                 write(i, f"i0x{irp_header.type:0>2x}_{ri:0>2d}_t0x{header.type:0>2x}_{type(z).__name__}", data)
@@ -432,7 +441,7 @@ def run_comparison(args):
             irp_header, reports = parse_irp(clean_data[k][i])
             for ri, (header, data) in enumerate(reports):
                 z = interpret_report(header, data)
-                if isinstance(z, IptsPenGeneral) and False:
+                if isinstance(z, IptsPenGeneral) and True:
                     d = z.ctr - prevs[k]
                     prevs[k] = z.ctr
                     l[k].append(f"{d}  {z.ctr}  {RED}{z.seq}{RESET}   {z.something}")
@@ -447,7 +456,7 @@ def run_comparison(args):
                     l[k].append(tl)
                     # uniques[k].add(hexify(data))
                     uniques[k].add(tl)
-                if isinstance(z, IptsMagnitude) and True:
+                if isinstance(z, IptsMagnitude) and False:
                     ignore = z.x1 == 255 or z.x2 == 255 or z.y1 == 255 or z.y2 == 255
                     ignore = ignore or z.x1 >= len(z.x) or z.x2 >= len(z.x) or z.y1 >= len(z.y) or z.y2 >= len(z.y) 
                     if ignore:
@@ -457,6 +466,16 @@ def run_comparison(args):
                         # Why this inverted index?
                         tl = f"{z.x1} {z.x2}  l{list(z.x)[z.x1]} r{list(z.x)[z.x2]}  {z.y1} {z.y2}   l{list(z.y)[z.y1]} r{list(z.y)[z.y2]} "
                     # Check if x1 and x2 are the highest two values.
+                    l[k].append(tl)
+                    # uniques[k].add(hexify(data))
+                    # uniques[k].add(tl)
+                if isinstance(z, IptsTouchedAntennas) and False:
+                    tl = str(z.data)
+                    l[k].append(tl)
+                    # uniques[k].add(hexify(data))
+                    # uniques[k].add(tl)
+                if isinstance(z, IptsDataSelection) and True:
+                    tl = str(z)
                     l[k].append(tl)
                     # uniques[k].add(hexify(data))
                     # uniques[k].add(tl)
