@@ -356,7 +356,7 @@ class IptsPenMetadata(IptsReport):
         # t_seq found a new one here, 0 in  2024_02_11_irp_thcbase_slim_pen_2
         t_seq = (0x01, 0x04, 0x02, 0x05, 0x06, 0x0a, 0x0d)
         r_seq = (0x06, 0x07, 0x09, 0x0a, 0x0a, 0x0b, 0x08)
-        assert(z.t in t_seq)
+        # assert(z.t in t_seq)
         assert(z.r == dict(zip(t_seq, r_seq))[z.t])
         return IptsPenMetadata(c=z.c, t=z.t, r=z.r)
 
