@@ -453,7 +453,7 @@ def run_comparison(args):
                     if ignore:
                         tl = "no"
                     else:
-                        print(z)
+                        # print(z)
                         # Why this inverted index?
                         tl = f"{z.x1} {z.x2}  l{list(z.x)[z.x1]} r{list(z.x)[z.x2]}  {z.y1} {z.y2}   l{list(z.y)[z.y1]} r{list(z.y)[z.y2]} "
                     # Check if x1 and x2 are the highest two values.

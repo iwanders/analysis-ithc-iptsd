@@ -238,13 +238,17 @@ class IptsMagnitude(IptsReport):
                     ("y2", ctypes.c_uint8),
                     ("_min255", ctypes.c_int32),
 
-                    ("x", ctypes.c_uint32 * IPTS_COLUMNS),
-                    ("y", ctypes.c_uint32 * IPTS_ROWS),
+                    ("x", ctypes.c_uint32 * (IPTS_COLUMNS + 2)),
+                    ("_mid1", ctypes.c_int32),
+                    ("_mid2", ctypes.c_int32),
+                    ("y", ctypes.c_uint32 * (IPTS_ROWS + 2)),
                    ]
     @staticmethod
     def parse(header, data):
         v = IptsMagnitude.ipts_magnitude.read(data)
         assert(v._min255 == -255)
+        assert(v._mid1 == 0)
+        assert(v._mid2 == 0)
         return IptsMagnitude(x1=v.x1, x2=v.x2, y1=v.y1, y2=v.y2, x=v.x, y=v.y)
 
 class IptsDftWindow(IptsReport):
