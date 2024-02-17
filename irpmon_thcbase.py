@@ -279,7 +279,14 @@ def discard_outgoing(records):
 def run_convert(args):
     records = load_file(args.in_file, limit=args.limit)
     data = discard_outgoing(records)
-    iptsd_dumper(args.out_file, data_record_truncator(filter_iptsd_frames(data)))
+
+    packets = []
+    for i, d in enumerate(data):
+        hid_header, reports = parse_hid_report(d)
+        packets.append((hid_header, reports))
+
+    iptsd_write(args.out_file, packets)
+
 
 RED = "\033[0;31m"
 GREEN = "\033[0;32m"
