@@ -243,7 +243,9 @@ class IptsPenGeneral(IptsReport):
         z = IptsPenGeneral.ipts_pen_general.read(data)
         assert(z._9a999941 == 0x4199999a)
         assert(z._0 == 0)
-        assert(z._1 == 1)
+        # print(z)
+        # print(z._1)
+        assert(z._1 == 1 or z._1 == 0)
         return IptsPenGeneral(ctr=z.ctr,seq=z.seq, something=z.something)
     
 
@@ -320,7 +322,7 @@ class IptsMagnitude(IptsReport):
     @staticmethod
     def parse(header, data):
         v = IptsMagnitude.ipts_magnitude.read(data)
-        assert(v._min255 == -255)
+        assert(v._min255 == -255 or v._min255 == -256)
         # mid1 == 1 and mid2 == 2 seen in diagonal.bin
         # assert(v._mid1 == 0)
         # assert(v._mid2 == 0)
@@ -377,11 +379,14 @@ class IptsPenMetadata(IptsReport):
         assert(z._6 == 6 or z._6 == 3) # Also seen with 3!?! in 2024_02_11_irp_thcbase_slim_pen_2
         assert(z._1 == 1)
         assert(z._ff == 0xffffffffffffffff)
+        # Most order is this:
+        t_seq = set([0x01, 0x04, 0x02, 0x05, 0x06, 0x0a, 0x0d, 0x00])
+        r_seq = set([0x06, 0x07, 0x09, 0x0a, 0x0a, 0x0b, 0x08, 0x07])
         # t_seq found a new one here, 0 in  2024_02_11_irp_thcbase_slim_pen_2
-        t_seq = (0x01, 0x04, 0x02, 0x05, 0x06, 0x0a, 0x0d)
-        r_seq = (0x06, 0x07, 0x09, 0x0a, 0x0a, 0x0b, 0x08)
-        # assert(z.t in t_seq)
-        assert(z.r == dict(zip(t_seq, r_seq))[z.t])
+        t_seq |= set([0x00, 0x02, 0x03])
+        r_seq |= set([0x06, 0x07])
+        assert(z.t in t_seq)
+        assert(z.r in r_seq)
         return IptsPenMetadata(c=z.c, t=z.t, r=z.r)
 
 class IptsPenDetection(IptsReport):
@@ -414,7 +419,7 @@ class IptsTermination(IptsReport):
     @staticmethod
     def parse(header, data):
         z = IptsTermination.ipts_termination.read(data)
-        assert(z._v == 0)
+        assert(z._v == 0 or z._v == 0x30000 or z._v == 1)
         return IptsTermination()
 
 report_parsers = {
@@ -441,9 +446,28 @@ report_parsers = {
 
 # Main function to actually interpret a report using the above data.
 def interpret_report(report_header, data):
-    p = report_parsers.get(header.type, IptsReport)
+    p = report_parsers.get(report_header.type, IptsReport)
     return p.parse(report_header, data)
 
+# Interpret a list of [(report_header, report_data), ...]
+def interpret_reports(reports):
+    output = []
+    for report_header, report_data in reports:
+        output.append(interpret_report(report_header, report_data))
+    return output
+
+# Interpret a frame; [frame_header, [(report_header, report_data), ...]]
+def interpret_frame(frame):
+    frame_header, reports = frame
+    return frame_header, interpret_reports(reports)
+
+# Interpret a list of frames; [[frame_header, [(report_header, report_data), ...]],...]
+# This is the function to call on the result of iptsd_read.
+def interpret_frames(frames):
+    output = []
+    for frame in frames:
+        output.append(interpret_frame(frame))
+    return output
 # ------------------------------------------------------------------------
 # The base HID frame handling.
 # ------------------------------------------------------------------------
@@ -498,6 +522,7 @@ def iptsd_write(out_path, hid_frames):
             f.write(bytearray([0] * (device_info.buffer_size - size)))
 
 # Read an ipstd file, return is [[hid_header, [[report_header, report_data],...],...]
+# This return can be passed into interpret_frames to get the parsed data.
 def iptsd_read(in_path):
     with open(in_path, "rb") as f:
         data = f.read()
