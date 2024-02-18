@@ -106,8 +106,89 @@ def plot_trajectory(trajectories):
     return f
 
 
+def relator(iptsd, digi):
+    # Digi is the ground truth and high res.
+    digi_i = 0
+    iptsd_i = 0
+
+    def advance_digi_until(pred):
+        nonlocal digi_i
+        while digi_i < len(digi) and not pred(digi[digi_i]):
+            digi_i += 1
+    def advance_ipstd_until(pred):
+        nonlocal iptsd_i
+        while iptsd_i < len(iptsd) and not pred(iptsd[iptsd_i]):
+            iptsd_i += 1
+
+    # Find the first index where both declare contact.
+    advance_digi_until(lambda z: z.contact)
+    advance_ipstd_until(lambda z: z.contact)
+    print(f"First contacts digi: {digi_i} iptsd: {iptsd_i}")
+
+    def d(a, b):
+        dx = b.x - a.x
+        dy = b.y - a.y
+        return dx * dx + dy * dy
+
+    matched_indices = []
+
+    distance_limit = 5000
+
+    iptsd_advances_without_digi_i = 0;
+    # Goal; for each iptsd, find the two indices into digid that surround it
+    while digi_i < len(digi) and iptsd_i < len(iptsd):
+        prev_digi_i = digi_i
+        prev_iptsd_i = iptsd_i
+
+        distance = d(digi[digi_i], iptsd[iptsd_i])
+        ndistance = d(digi[digi_i + 1], iptsd[iptsd_i])
+        if ndistance < distance:
+            digi_i += 1
+            iptsd_advances_without_digi_i = 0
+        else:
+            if distance < distance_limit:
+                matched_indices.append((iptsd_i, digi_i))
+            iptsd_advances_without_digi_i += 1
+            iptsd_i += 1
+
+        if iptsd_advances_without_digi_i > 5:
+            # Well... problem here.
+            digi_i += 1
+            advance_digi_until(lambda z: z.contact or z.button)
+            advance_ipstd_until(lambda z: z.contact or z.button)
+            iptsd_advances_without_digi_i = 0
+
+        # if (digi_i == 1964 and iptsd_i > 3600):
+            # break;
+        # if len(matched_indices) > 1000:
+            # break
+        
+
+    # for d in matched_indices:
+        # print(d)
+    return matched_indices
+        
+
+def add_edges(fig, iptsd, digi, indices):
+    x = []
+    y = []
+    for iptsd_i, digi_i in indices:
+        if iptsd_i >= len(iptsd) or digi_i >= len(digi):
+            break
+        x.append(digi[digi_i].x)
+        x.append(iptsd[iptsd_i].x)
+        x.append(float("nan"))
+        y.append(digi[digi_i].y)
+        y.append(iptsd[iptsd_i].y)
+        y.append(float("nan"))
+    fig.axes[0].plot(x, y)
+    
+
 def run_compare(args):
     entries = {}
+
+    digi_events = None
+    iptsd_json = None
 
     if args.digi:
         digi_events = generalise_digi(load_digiinfo_xml(args.digi))
@@ -122,7 +203,13 @@ def run_compare(args):
             "properties":{"color": "green"}
         }
 
+
     f = plot_trajectory(entries)
+    if digi_events and iptsd_json:
+        edges = relator(iptsd_json, digi_events)
+        add_edges(f, iptsd_json, digi_events, edges)
+
+
 
     import matplotlib.pyplot as plt
     plt.show()
