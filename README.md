@@ -56,3 +56,6 @@ Current understanding;
 ```
 They jump, but they jump at different points in time.
 
+
+# Tip & ring distance
+Can we calculate the tip and ring distance using the estimated positions when we are in contact? If the positions are offset by the pen position, we should get a sphere?

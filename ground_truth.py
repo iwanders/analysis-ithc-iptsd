@@ -21,8 +21,12 @@ def generalise_digi(events):
             "button": e.barrel,
             "x": e.x,
             "y": e.y,
-            "x_t": e.tiltx,
-            "y_t": e.tilty,
+            # <property name="tiltx" logmin="0" logmax="18000" res="100" unit="deg" />
+            # <property name="tilty" logmin="0" logmax="18000" res="100" unit="deg" />
+            # tiltx and tilty appear to be in in an angle? 18000 / 100 = 180?
+            # see https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/required-hid-top-level-collections#x-tilt
+            "x_t": (e.tiltx / 18000) / 100.0 + e.x,
+            "y_t": (e.tilty / 18000) / 100.0 + e.y,
         }
         output.append(PenState(**updated))
     return output
@@ -39,6 +43,8 @@ def generalise_iptsd_json(events):
             updated = {k: getattr(e.payload, {"eraser":"rubber"}.get(k, k)) for k in PenState._fields}
             updated["x"] = updated["x"] * metadata.size.width
             updated["y"] = updated["y"] * metadata.size.height
+            updated["x_t"] = updated["x_t"] * metadata.size.width
+            updated["y_t"] = updated["y_t"] * metadata.size.height
         output.append(PenState(**updated))
     return output
 
@@ -84,9 +90,10 @@ def plot_trajectory(trajectories):
         ax.plot(_x(xy_contact), _y(xy_contact), color=color, label=f"{name}")
         ax.plot(_x(xy_proximity), _y(xy_proximity), color=color, label=f"{name}_prox", linewidth=0.2, alpha=0.5)
         ax.plot(_x(xy_eraser), _y(xy_eraser), color=color, label=f"{name}_eraser", linewidth=None, marker="s", alpha=0.5, markersize=4, markerfacecolor='none')
-        ax.plot(_x(xy_button), _y(xy_eraser), color=color, label=f"{name}_button", linewidth=None, marker="v", alpha=0.5, markersize=4, markerfacecolor='none')
-    
+        ax.plot(_x(xy_button), _y(xy_button), color=color, label=f"{name}_button", linewidth=None, marker="v", alpha=1.0, markersize=4, markerfacecolor='none')    
 
+        xyt = [[v.x_t, v.y_t] for v in events]
+        # ax.plot(_x(xyt), _y(xyt), color=color, label=f"{name}_tilt", linestyle=":", linewidth=1.0, alpha=1.0)
 
     ax.set_xlim([0, IPTS_WIDTH])
     ax.set_ylim([0, IPTS_HEIGHT])
