@@ -13,7 +13,7 @@ Record = namedtuple("Record", ["type", "payload"])
 MetadataSize = namedtuple("MetataSize", ["rows", "columns", "width", "height"])
 MetataTransform = namedtuple("MetataTransform", ["xx", "yx", "tx", "xy", "yy", "ty"])
 Metadata = namedtuple("Metadata", ["size", "transform"])
-StylusData = namedtuple("StylusData", ["timestamp", "x", "y", "pressure", "altitude", "azimuth", "serial", "x_t", "y_t", "x_ring", "y_ring"])
+StylusData = namedtuple("StylusData", ["timestamp", "proximity", "contact", "rubber", "button", "x", "y", "pressure", "altitude", "azimuth", "serial", "x_t", "y_t", "x_ring", "y_ring"])
 
 
 class IptsdConfig:
@@ -23,7 +23,7 @@ class IptsdConfig:
         self.dft_position_exp = -0.7
         self.dft_freq_min_mag = 10000
 
-def iptsd_load(p):
+def iptsd_json_load(p):
     import gzip
     entries = []
     opener = gzip.open if p.endswith("gz") else open

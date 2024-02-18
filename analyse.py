@@ -20,7 +20,7 @@ import json
 from collections import namedtuple
 from enum import Enum
 from ipts import DftType, IPTS_DFT_NUM_COMPONENTS, IPTS_DFT_PRESSURE_ROWS
-from iptsd import iptsd_load, IptsdConfig, cpp_interpolate_pos, cpp_interpolate_frequency
+from iptsd import iptsd_json_load, IptsdConfig, cpp_interpolate_pos, cpp_interpolate_frequency
 
 clamp = lambda x, y, z: max(min(x, z), y)
 REAL = 0
@@ -799,7 +799,7 @@ if __name__ == "__main__":
     # default_interpolate = cpp_interpolate_pos
     scenario = test_scenarios.get(sys.argv[1], Scenario(sys.argv[1], max_index=None, min_index=None, interp=default_interpolate))
 
-    d = iptsd_load(scenario.filename)
+    d = iptsd_json_load(scenario.filename)
     interpolate = scenario.interp
     print(interpolate.__name__)
 
