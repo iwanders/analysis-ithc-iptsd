@@ -4,19 +4,20 @@ from digi_info import load_digiinfo_xml
 from ipts import iptsd_read, extract_reports, IptsDftWindowPosition, IptsDftWindowButton, IptsPenGeneral, IPTS_COLUMNS, IPTS_ROWS, IPTS_WIDTH, IPTS_HEIGHT
 from iptsd import iptsd_json_load
 import os
+import copy
 
 # Generalised pen state.
 from collections import namedtuple
 
-PenState = namedtuple("PenState", ["x", "y", "proximity", "contact", "rubber", "button", "x_t", "y_t"])
+PenState = namedtuple("PenState", ["x", "y", "proximity", "contact", "eraser", "button", "x_t", "y_t"])
 
 def generalise_digi(events):
     output = []
     for e in events:
         updated = {
             "proximity": e.inrange,
-            "contact": e.down,
-            "rubber": e.eraser,
+            "contact": e.pressure != 0,
+            "eraser": e.eraser,
             "button": e.barrel,
             "x": e.x,
             "y": e.y,
@@ -33,10 +34,9 @@ def generalise_iptsd_json(events):
             if z.type == "METADATA":
                 return z.payload
     metadata = get_metadata(events)
-    print(metadata)
     for e in events:
         if (e.type == "STYLUS_DATA"):
-            updated = {k: getattr(e.payload, k) for k in PenState._fields}
+            updated = {k: getattr(e.payload, {"eraser":"rubber"}.get(k, k)) for k in PenState._fields}
             updated["x"] = updated["x"] * metadata.size.width
             updated["y"] = updated["y"] * metadata.size.height
         output.append(PenState(**updated))
@@ -50,8 +50,10 @@ def plot_trajectory(trajectories):
     ax = f.add_subplot(111)
 
     def _mask_pos_by_fun(pos, events, f):
-        z = pos[:]
+        z = copy.deepcopy(pos)
         for x, event in zip(z, events):
+            # dsflkjdsflkjdsf = f(event)
+            # print(bool(dsflkjdsflkjdsf))
             if not f(event):
                 x[0] = float("nan")
                 x[1] = float("nan")
@@ -74,7 +76,15 @@ def plot_trajectory(trajectories):
         xy = [[v.x, v.y] for v in events]
         # print(xy)
         xy_contact = _mask_pos_by_fun(xy, events, lambda a: a.contact)
-        ax.plot(_x(xy_contact), _y(xy_contact), color=color, label=name)
+        xy_proximity = _mask_pos_by_fun(xy, events, lambda a: a.proximity)
+
+        xy_eraser = _mask_pos_by_fun(xy, events, lambda a: a.eraser)
+        xy_button = _mask_pos_by_fun(xy, events, lambda a: a.button)
+
+        ax.plot(_x(xy_contact), _y(xy_contact), color=color, label=f"{name}")
+        ax.plot(_x(xy_proximity), _y(xy_proximity), color=color, label=f"{name}_prox", linewidth=0.2, alpha=0.5)
+        ax.plot(_x(xy_eraser), _y(xy_eraser), color=color, label=f"{name}_eraser", linewidth=None, marker="s", alpha=0.5, markersize=4, markerfacecolor='none')
+        ax.plot(_x(xy_button), _y(xy_eraser), color=color, label=f"{name}_button", linewidth=None, marker="v", alpha=0.5, markersize=4, markerfacecolor='none')
     
 
 
