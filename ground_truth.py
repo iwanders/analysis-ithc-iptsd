@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from digi_info import load_digiinfo_xml
-from ipts import iptsd_read, extract_reports, IptsDftWindowPosition, IptsDftWindowButton, IptsPenGeneral, IPTS_COLUMNS, IPTS_ROWS, IPTS_WIDTH, IPTS_HEIGHT
+from ipts import  IPTS_COLUMNS, IPTS_ROWS, IPTS_WIDTH, IPTS_HEIGHT
 from iptsd import iptsd_json_load
 import os
 import copy

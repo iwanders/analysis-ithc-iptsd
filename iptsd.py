@@ -15,6 +15,10 @@ MetataTransform = namedtuple("MetataTransform", ["xx", "yx", "tx", "xy", "yy", "
 Metadata = namedtuple("Metadata", ["size", "transform"])
 StylusData = namedtuple("StylusData", ["timestamp", "proximity", "contact", "rubber", "button", "x", "y", "pressure", "altitude", "azimuth", "serial", "x_t", "y_t", "x_ring", "y_ring"])
 
+REAL = 0
+IMAG = 1
+
+clamp = lambda x, y, z: max(min(x, z), y)
 
 class IptsdConfig:
     def __init__(self):
@@ -22,6 +26,7 @@ class IptsdConfig:
         self.dft_position_min_mag = 2000
         self.dft_position_exp = -0.7
         self.dft_freq_min_mag = 10000
+        self.dft_tilt_min_mag = 10000
 
 def iptsd_json_load(p):
     import gzip
@@ -53,8 +58,24 @@ def iptsd_json_load(p):
     return entries
 
 
+def _convert_row(row):
+    if hasattr(row, "real"):
+        return Row(**dict(
+            freq = row.frequency,
+            mag = row.magnitude,
+            first= row.first,
+            last = row.last,
+            mid = row.mid,
+            zero = row.zero,
+            iq = [(row.real[i], row.imag[i]) for i in range(IPTS_DFT_NUM_COMPONENTS)]
+        ))
+    return row
+    
+
 def cpp_interpolate_pos(row, config, maxi_override = None):
     import math
+
+    row = _convert_row(row)
 
     # // assume the center component has the max amplitude
     maxi = int(IPTS_DFT_NUM_COMPONENTS / 2)
@@ -135,7 +156,7 @@ def cpp_interpolate_frequency(window, config, maxi_override=None):
     maxm = 0
     maxi_pairs = []
     for i in range(rows):
-        m = window.x[i].mag + window.y[i].mag
+        m = _convert_row(window.x[i]).mag + _convert_row(window.y[i]).mag
         maxi_pairs.append((m, i))
         if m > maxm:
             maxm = m
@@ -168,8 +189,8 @@ def cpp_interpolate_frequency(window, config, maxi_override=None):
     # */
     for i in range(3):
         for j in range(IPTS_DFT_NUM_COMPONENTS):
-            rowx = window.x[maxi + i - 1]
-            rowy = window.y[maxi + i - 1]
+            rowx = _convert_row(window.x[maxi + i - 1])
+            rowy = _convert_row(window.y[maxi + i - 1])
             real[i] += rowx.iq[j][REAL] + rowx.iq[j][REAL]
             imag[i] += rowx.iq[j][IMAG] + rowx.iq[j][IMAG]
 
@@ -185,6 +206,46 @@ def cpp_interpolate_frequency(window, config, maxi_override=None):
     d = (ra * rb + ia * ib) / denom
     return (maxi + clamp(d, mind, maxd)) / (rows - 1)
 
+
+def process_position(dft, config = IptsdConfig()):
+    res = {}
+    if dft.header.num_rows <= 1:
+        return None
+
+    if dft.x[0].magnitude <= config.dft_position_min_mag or dft.y[0].magnitude <= config.dft_position_min_mag:
+        return None
+
+    x = cpp_interpolate_pos(dft.x[0], config)
+    y = cpp_interpolate_pos(dft.y[0], config)
+
+    res["x"] = x
+    res["y"] = y
+
+    res["xt"] = float("nan")
+    res["yt"] = float("nan")
+
+    if dft.x[1].magnitude > config.dft_tilt_min_mag and dft.y[1].magnitude > config.dft_tilt_min_mag:
+        xt = cpp_interpolate_pos(dft.x[1], config)
+        yt = cpp_interpolate_pos(dft.y[1], config)
+        res["xt"] = xt
+        res["yt"] = yt
+    return res
+
+def process_pressure(dft, config = IptsdConfig()):
+    res = {}
+    if dft.header.num_rows <= 1:
+        return None
+
+    p = cpp_interpolate_frequency(dft, config)
+    p = 1.0 - p
+    if p > 0:
+        res["contact"] = True
+        res["pressure"] = clamp(p, 0.0, 1.0)
+    else:
+        res["contact"] = False
+        res["pressure"] = 0.0
+    return res
+        
 
 if __name__ == "__main__":
     import sys

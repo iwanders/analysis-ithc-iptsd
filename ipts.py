@@ -486,6 +486,17 @@ def extract_reports(frames, report_types):
             if p in report_types:
                 output.append(p.parse(report_header, report_data))
     return output
+
+# Clunky helper to group unique report types into sets.
+def group_reports(reports, report_types):
+    grouped = []
+    group = {}
+    for r in reports:
+        group[type(r)] = r
+        if len(group) == len(report_types):
+            grouped.append(group)
+            group = {}
+    return grouped
 # ------------------------------------------------------------------------
 # The base HID frame handling.
 # ------------------------------------------------------------------------

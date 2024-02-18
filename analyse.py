@@ -20,11 +20,7 @@ import json
 from collections import namedtuple
 from enum import Enum
 from ipts import DftType, IPTS_DFT_NUM_COMPONENTS, IPTS_DFT_PRESSURE_ROWS
-from iptsd import iptsd_json_load, IptsdConfig, cpp_interpolate_pos, cpp_interpolate_frequency
-
-clamp = lambda x, y, z: max(min(x, z), y)
-REAL = 0
-IMAG = 1
+from iptsd import iptsd_json_load, IptsdConfig, cpp_interpolate_pos, cpp_interpolate_frequency, REAL, IMAG, clamp
 
 def comp_to_str(z):
     return {REAL: "REAL", IMAG: "IMAG"}[z]
