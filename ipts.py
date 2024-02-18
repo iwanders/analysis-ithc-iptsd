@@ -346,6 +346,12 @@ class IptsDftWindow(IptsReport):
 
         return use_type(header=header, x=xs, y=ys)
 
+    @staticmethod
+    def dft_type(header, data):
+        header = ipts_pen_dft_window.read(data)
+        return _dft_types.get(header.data_type, IptsDftWindow)
+        
+
 class IptsDftWindowPressure(IptsDftWindow):
     pass
 class IptsDftWindowPosition(IptsDftWindow):
@@ -467,6 +473,17 @@ def interpret_frames(frames):
     output = []
     for frame in frames:
         output.append(interpret_frame(frame))
+    return output
+
+def extract_reports(frames, report_types):
+    output = []
+    for frame_header, reports in frames:
+        for report_header, report_data in reports:
+            p = report_parsers.get(report_header.type, IptsReport)
+            if p is IptsDftWindow:
+                p = IptsDftWindow.dft_type(report_header, report_data)
+            if p in report_types:
+                output.append(p.parse(report_header, report_data))
     return output
 # ------------------------------------------------------------------------
 # The base HID frame handling.
