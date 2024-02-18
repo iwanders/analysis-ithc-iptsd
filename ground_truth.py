@@ -25,8 +25,8 @@ def generalise_digi(events):
             # <property name="tilty" logmin="0" logmax="18000" res="100" unit="deg" />
             # tiltx and tilty appear to be in in an angle? 18000 / 100 = 180?
             # see https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/required-hid-top-level-collections#x-tilt
-            "x_t": (e.tiltx / 18000) / 100.0 + e.x,
-            "y_t": (e.tilty / 18000) / 100.0 + e.y,
+            "x_t": (e.tiltx / 18000) / 100.0,
+            "y_t": (e.tilty / 18000) / 100.0,
         }
         output.append(PenState(**updated))
     return output
