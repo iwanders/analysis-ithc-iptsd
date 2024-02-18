@@ -17,7 +17,6 @@ class DftType(Enum):
     IPTS_DFT_ID_PRESSURE = 11
     IPTS_DFT_ID_10 = 10
     IPTS_DFT_ID_8 = 8
-    METADATA = 999
     def __lt__(self, o):
         self._value_ < o._value_
 
