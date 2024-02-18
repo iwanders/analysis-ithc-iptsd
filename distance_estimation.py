@@ -2,10 +2,11 @@
 
 import sys
 import math
+import shelve
 
 from ipts import iptsd_read, extract_reports, IptsDftWindowPosition, IptsDftWindowPressure, group_reports
 from iptsd import IptsdConfig, process_position, process_pressure, clamp
-from ground_truth import 
+from ground_truth import generalise_digi
 from digi_info import load_digiinfo_xml
 
 def obtain_state(grouped):
@@ -25,19 +26,81 @@ def obtain_state(grouped):
         records.append(current)
     return records
 
+def euclid(a, b):
+    dx = a[0] - b[0]
+    dy = a[1] - b[1]
+    return math.sqrt(dx * dx + dy * dy)
 
-if __name__ == "__main__":
-    z = iptsd_read(sys.argv[1])
-    report_types = set([IptsDftWindowPosition, IptsDftWindowPressure])
-    reports = extract_reports(z, report_types)
+def naive_correlator(states, digi):
+    def find_best_digi(sp, start=0):
+        dist = float("inf")
+        best_i = None
+        for i in range(start, len(digi)):
+            c = digi[i]
+            dp = (c.x, c.y)
+            newdist = euclid(sp, dp)
+            if newdist < dist:
+                best_i = i
+                dist = newdist
+        return best_i
+        
+    digi_i = 0
+    for state in states:
+        dx = state["xt"] - state["x"]
+        dy = state["yt"] - state["y"]
+        yaw = math.atan2(dy, dx)
+        sp = (state["x"], state["y"])
+        di = find_best_digi(sp, digi_i)
+        if di:
+            state["digi"] = digi[di]
+            # digi_i = di
+     
+def add_edges(states, show=True):
+    import matplotlib.pyplot as plt
+    x = []
+    y = []
+    for state in states:
+        if not "digi" in state:
+            continue
+        x.append(state["x"])
+        x.append(state["digi"].x)
+        x.append(float("nan"))
+        y.append(state["y"])
+        y.append(state["digi"].y)
+        y.append(float("nan"))   
+
+    plt.plot(x, y)
+    if show:
+        plt.show()
+
+def cached_calc(args):
+    v = 0
+    key = f"{args.iptsd}_{args.digi}_{v}"
+    with shelve.open('/tmp/distance_cache.shelf') as db:
+        if key in db:
+            return db[key]
+        else:
+            z = iptsd_read(args.iptsd)
+            report_types = set([IptsDftWindowPosition, IptsDftWindowPressure])
+            reports = extract_reports(z, report_types)
+            truth = generalise_digi(load_digiinfo_xml(args.digi), rowcol=True)
+            grouped = group_reports(reports, report_types)
+            states = obtain_state(grouped)
+
+            naive_correlator(states, truth)
+            db[key] = states
+            return states
 
 
-    grouped = group_reports(reports, report_types)
-    states = obtain_state(grouped)
+def run_estimate_distances(args):
+    states = cached_calc(args)
 
-    # from analyse import show_trajectory
-    # xy = [(state["x"], state["y"]) for state in states if bool(state)]
-    # show_trajectory({'xy': xy})
+    from analyse import show_trajectory
+    xy_state = [(state["x"], state["y"]) for state in states if bool(state)]
+    xy_truth = [(state["digi"].x, state["digi"].y) for state in states if "digi" in state]
+    show_trajectory({'xy_state': xy_state, 'xy_truth': xy_truth})
+    add_edges(states)
+
 
     pressed = []
     for state in states:
@@ -106,5 +169,23 @@ if __name__ == "__main__":
         ax.scatter(x, y, z)
 
     plt.show()
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command")
+
+    compare_parser = subparsers.add_parser('estimate')
+    compare_parser.add_argument("--digi", help="estimate ground truth digitizer file to open.")
+    compare_parser.add_argument("--iptsd", help="The iptsd dump to use.")
+    compare_parser.set_defaults(func=run_estimate_distances)
+
+    args = parser.parse_args()
+    if (args.command is None):
+        parser.print_help()
+        parser.exit()
+
+    args.func(args)
 
 

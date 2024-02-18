@@ -11,16 +11,18 @@ from collections import namedtuple
 
 PenState = namedtuple("PenState", ["x", "y", "proximity", "contact", "eraser", "button", "x_t", "y_t"])
 
-def generalise_digi(events):
+def generalise_digi(events, rowcol=False):
     output = []
+    x_scale = ((IPTS_COLUMNS - 1) / IPTS_WIDTH) if rowcol else 1.0
+    y_scale = ((IPTS_ROWS - 1) / IPTS_HEIGHT) if rowcol else 1.0
     for e in events:
         updated = {
             "proximity": e.inrange,
             "contact": e.pressure != 0,
             "eraser": e.eraser,
             "button": e.barrel,
-            "x": e.x,
-            "y": e.y,
+            "x": e.x * x_scale,
+            "y": e.y * y_scale,
             # <property name="tiltx" logmin="0" logmax="18000" res="100" unit="deg" />
             # <property name="tilty" logmin="0" logmax="18000" res="100" unit="deg" />
             # tiltx and tilty appear to be in in an angle? 18000 / 100 = 180?
@@ -31,8 +33,10 @@ def generalise_digi(events):
         output.append(PenState(**updated))
     return output
 
-def generalise_iptsd_json(events):
+def generalise_iptsd_json(events, rowcol=False):
     output = []
+    x_scale = ((IPTS_COLUMNS - 1) / IPTS_WIDTH) if rowcol else 1.0
+    y_scale = ((IPTS_ROWS - 1) / IPTS_HEIGHT) if rowcol else 1.0
     def get_metadata(d):
         for z in d:
             if z.type == "METADATA":
@@ -41,10 +45,10 @@ def generalise_iptsd_json(events):
     for e in events:
         if (e.type == "STYLUS_DATA"):
             updated = {k: getattr(e.payload, {"eraser":"rubber"}.get(k, k)) for k in PenState._fields}
-            updated["x"] = updated["x"] * metadata.size.width
-            updated["y"] = updated["y"] * metadata.size.height
-            updated["x_t"] = updated["x_t"] * metadata.size.width
-            updated["y_t"] = updated["y_t"] * metadata.size.height
+            updated["x"] = updated["x"] * metadata.size.width  * x_scale
+            updated["y"] = updated["y"] * metadata.size.height * y_scale
+            updated["x_t"] = updated["x_t"] * metadata.size.width* x_scale
+            updated["y_t"] = updated["y_t"] * metadata.size.height * y_scale
         output.append(PenState(**updated))
     return output
 
