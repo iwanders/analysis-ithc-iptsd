@@ -112,8 +112,8 @@ class Base(ctypes.LittleEndianStructure, Readable, Convertible):
 
 IPTS_DFT_NUM_COMPONENTS = 9
 IPTS_DFT_PRESSURE_ROWS  = 6
-IPTS_COLUMNS = 64
-IPTS_ROWS = 44
+IPTS_COLUMNS = 68
+IPTS_ROWS = 46
 
 
 class ipts_touch_metadata_size(Base):
@@ -314,10 +314,10 @@ class IptsMagnitude(IptsReport):
                     ("y2", ctypes.c_uint8),
                     ("_min255", ctypes.c_int32),
 
-                    ("x", ctypes.c_uint32 * (IPTS_COLUMNS + 2)),
+                    ("x", ctypes.c_uint32 * IPTS_COLUMNS),
                     ("_mid1", ctypes.c_int32),
                     ("_mid2", ctypes.c_int32),
-                    ("y", ctypes.c_uint32 * (IPTS_ROWS + 2)),
+                    ("y", ctypes.c_uint32 * IPTS_ROWS),
                    ]
     @staticmethod
     def parse(header, data):
