@@ -361,12 +361,18 @@ class IptsDftWindowPosition2(IptsDftWindow):
     pass
 class IptsDftWindowButton(IptsDftWindow):
     pass
+class IptsDftWindow0x08(IptsDftWindow):
+    pass
+class IptsDftWindow0x0a(IptsDftWindow):
+    pass
 
 _dft_types.update({
     DftType.IPTS_DFT_ID_POSITION._value_: IptsDftWindowPosition,
     DftType.IPTS_DFT_ID_POSITION2._value_: IptsDftWindowPosition2,
     DftType.IPTS_DFT_ID_BUTTON._value_: IptsDftWindowButton,
     DftType.IPTS_DFT_ID_PRESSURE._value_: IptsDftWindowPressure,
+    DftType.IPTS_DFT_ID_8._value_: IptsDftWindow0x08,
+    DftType.IPTS_DFT_ID_10._value_: IptsDftWindow0x0a,
 })
 
 class IptsMultipleRegion(IptsReport):

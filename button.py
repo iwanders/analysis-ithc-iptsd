@@ -3,7 +3,7 @@
 import sys
 import json
 
-from ipts import iptsd_read, extract_reports, IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, group_reports
+from ipts import iptsd_read, extract_reports, IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, group_reports
 from iptsd import IptsdConfig, clamp, obtain_state, write_states, _convert_row
 # from generalised import generalise_digi, wintilt_to_yaw_tilt
 from digi_info import load_digiinfo_xml
@@ -17,11 +17,11 @@ def print_dft(d, row_limit=9999):
     for i, r in enumerate(d.x):
         if i >= row_limit:
             continue
-        print(f"x[{i}]: {r.frequency: >12d} {r.magnitude: >8d} {format_r(r)}")
+        print(f"x[{i: >2d}]: {r.frequency: >12d} {r.magnitude: >8d} {format_r(r)}")
     for i, r in enumerate(d.y):
         if i >= row_limit:
             continue
-        print(f"y[{i}]: {r.frequency: >12d} {r.magnitude: >8d} {format_r(r)}")
+        print(f"y[{i: >2d}]: {r.frequency: >12d} {r.magnitude: >8d} {format_r(r)}")
 
 
 RED = "\033[0;31m"
@@ -54,11 +54,18 @@ def run_compare_button(args):
     print(len(full_button))
 
 
+    dftprint = IptsDftWindowButton
+    # dftprint = IptsDftWindow0x08
+    # dftprint = IptsDftWindow0x0a
+    # dftprint = IptsDftWindowPosition2
+    # dftprint = IptsDftWindowPressure
+
+
     def print_all(states, reminder):
         for i, state in enumerate(states):
             print(reminder)
-            state_dft = state["group"][IptsDftWindowButton]
-            state_pos_dft = state["group"][IptsDftWindowPosition]
+            state_dft = state["group"][dftprint]
+            state_pos_dft = state["group"][dftprint]
             print("pos")
             print_dft(state_pos_dft, 1)
             print("button")
