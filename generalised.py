@@ -319,6 +319,12 @@ def run_compare(args):
             "events":states_json,
             "properties":{"color": "orange"}
         }
+    if args.states2:
+        states2_json = generalise_states_json(states_json_load(args.states2), True)
+        entries[os.path.basename(args.states2)] = {
+            "events":states2_json,
+            "properties":{"color": "magenta"}
+        }
 
 
     f = plot_trajectory(entries)
@@ -343,6 +349,7 @@ if __name__ == "__main__":
     compare_parser.add_argument("--digi", help="The ground truth digitizer file to open.")
     compare_parser.add_argument("--json", help="The iptsd json file to use.")
     compare_parser.add_argument("--states", help="The states json file to use.")
+    compare_parser.add_argument("--states2", help="The states json file to use.")
     compare_parser.set_defaults(func=run_compare)
 
     args = parser.parse_args()

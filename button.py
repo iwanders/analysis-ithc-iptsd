@@ -108,6 +108,7 @@ def run_compare_button(args):
 
 
 if __name__ == "__main__":
+    # ./button.py compare_button  --full-button /tmp/approach_with_button.bin  --no-button ../pen_dumps/button_flicker.bin
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command")
