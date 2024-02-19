@@ -53,14 +53,24 @@ def run_compare_button(args):
     print(len(no_button))
     print(len(full_button))
 
-    for i, state in enumerate(no_button):
-        print("no_button")
-        state_dft = state["group"][IptsDftWindowButton]
-        state_pos_dft = state["group"][IptsDftWindowPosition]
-        print("pos")
-        print_dft(state_pos_dft, 1)
-        print("button")
-        print_dft(state_dft)
+
+    def print_all(states, reminder):
+        for i, state in enumerate(states):
+            print(reminder)
+            state_dft = state["group"][IptsDftWindowButton]
+            state_pos_dft = state["group"][IptsDftWindowPosition]
+            print("pos")
+            print_dft(state_pos_dft, 1)
+            print("button")
+            print_dft(state_dft)
+
+    print(YELLOW)
+    print_all(full_button, "Held")
+    print(RESET)
+        
+    print(GREEN)
+    print_all(no_button, "No button")
+    print(RESET)
         
 
     for i, (held_state, normal_state) in enumerate(zip(full_button, no_button)):
