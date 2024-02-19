@@ -4,7 +4,8 @@
 import json
 from collections import namedtuple
 from enum import Enum
-from ipts import DftType, IPTS_DFT_NUM_COMPONENTS, IPTS_DFT_PRESSURE_ROWS
+from ipts import DftType, IPTS_DFT_NUM_COMPONENTS, IPTS_DFT_PRESSURE_ROWS, IptsDftWindowPosition, IptsDftWindowPressure, IptsDftWindowButton
+
 
 DftWindow = namedtuple("Window", ["rows", "type", "x", "y"])
 Row = namedtuple("Row", ['freq', 'mag', 'first', 'last', 'mid', 'zero', 'iq'])
@@ -27,6 +28,7 @@ class IptsdConfig:
         self.dft_position_exp = -0.7
         self.dft_freq_min_mag = 10000
         self.dft_tilt_min_mag = 10000
+        self.dft_button_min_mag = 1000
 
 def iptsd_json_load(p):
     import gzip
@@ -207,10 +209,50 @@ def cpp_interpolate_frequency(window, config, maxi_override=None):
     return (maxi + clamp(d, mind, maxd)) / (rows - 1)
 
 
-def process_position(dft, config = IptsdConfig()):
-    res = {}
-    if dft.header.num_rows <= 1:
+def cpp_handle_button(dft_button, dft_position, config=IptsdConfig()):
+    if dft_button.header.num_rows <= 0:
         return None
+
+    # Skip the group check, it doesn't affect the issues on our side.
+    button = False
+    eraser = False
+
+    mid = int(IPTS_DFT_NUM_COMPONENTS / 2)
+
+    prowx = _convert_row(dft_position.x[0])
+    prowy = _convert_row(dft_position.y[0])
+    m_real = prowx.iq[mid][REAL] + prowy.iq[mid][REAL]
+    m_imag = prowx.iq[mid][IMAG] + prowy.iq[mid][IMAG]
+
+    rowx = _convert_row(dft_button.x[0])
+    rowy = _convert_row(dft_button.y[0])
+    if (rowx.mag > config.dft_button_min_mag and rowy.mag > config.dft_button_min_mag):
+        real = rowx.iq[mid][REAL] + rowy.iq[mid][REAL]
+        imag = rowx.iq[mid][IMAG] + rowy.iq[mid][IMAG]
+        # same phase as position signal = eraser, opposite phase = button
+        val = m_real * real + m_imag * imag
+        button = val < 0
+        rubber = val > 0
+
+    return (button, eraser)
+    
+
+def process_button(dft_button, dft_position, config=IptsdConfig()):
+
+    if dft_button is None or dft_position is None:
+        return None
+    res = {}
+
+    z = cpp_handle_button(dft_button,dft_position, config)
+    if z is not None:
+        res["button"] = z[0]
+        res["eraser"] = z[1]
+    return res
+
+def process_position(dft, config = IptsdConfig()):
+    if dft is None or dft.header.num_rows <= 1:
+        return None
+    res = {}
 
     if dft.x[0].magnitude <= config.dft_position_min_mag or dft.y[0].magnitude <= config.dft_position_min_mag:
         return None
@@ -221,21 +263,21 @@ def process_position(dft, config = IptsdConfig()):
     res["x"] = x
     res["y"] = y
 
-    res["xt"] = float("nan")
-    res["yt"] = float("nan")
+    res["x_t"] = float("nan")
+    res["y_t"] = float("nan")
 
     if dft.x[1].magnitude > config.dft_tilt_min_mag and dft.y[1].magnitude > config.dft_tilt_min_mag:
         xt = cpp_interpolate_pos(dft.x[1], config)
         yt = cpp_interpolate_pos(dft.y[1], config)
-        res["xt"] = xt
-        res["yt"] = yt
+        res["x_t"] = xt
+        res["y_t"] = yt
     return res
 
 def process_pressure(dft, config = IptsdConfig()):
-    res = {}
-    if dft.header.num_rows <= 1:
+    if dft is None or dft.header.num_rows <= 1:
         return None
 
+    res = {}
     p = cpp_interpolate_frequency(dft, config)
     p = 1.0 - p
     if p > 0:
@@ -245,7 +287,38 @@ def process_pressure(dft, config = IptsdConfig()):
         res["contact"] = False
         res["pressure"] = 0.0
     return res
-        
+
+
+def obtain_state(grouped, insert_group=False):
+    records = []
+    for group in grouped:
+        current = {}
+        pos = process_position(group.get(IptsDftWindowPosition, None))
+        if pos:
+            current.update(pos)
+
+        pressure = process_pressure(group.get(IptsDftWindowPressure, None))
+        if pressure:
+            current.update(pressure)
+
+        button = process_button(group.get(IptsDftWindowButton, None), group.get(IptsDftWindowPosition, None))
+        if button:
+            current.update(button)
+
+        if insert_group:
+            current["group"] = group
+        records.append(current)
+    return records
+
+def write_states(fname, records):
+    import json
+    import copy
+    clean_records = []
+    for r in records:
+        clean_records.append({k:r[k] for k in r.keys() if k != "group"})
+    with open(fname, "w") as f:
+        json.dump(clean_records, f)
+
 
 if __name__ == "__main__":
     import sys

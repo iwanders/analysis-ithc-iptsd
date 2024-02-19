@@ -5,26 +5,10 @@ import math
 import shelve
 
 from ipts import iptsd_read, extract_reports, IptsDftWindowPosition, IptsDftWindowPressure, group_reports
-from iptsd import IptsdConfig, process_position, process_pressure, clamp
+from iptsd import IptsdConfig, clamp, obtain_state
 from ground_truth import generalise_digi, wintilt_to_yaw_tilt
 from digi_info import load_digiinfo_xml
 
-def obtain_state(grouped):
-    records = []
-    for group in grouped:
-        current = {}
-        pos = process_position(group[IptsDftWindowPosition])
-        if pos:
-            current.update(pos)
-        else:
-            continue
-        pressure = process_pressure(group[IptsDftWindowPressure])
-
-        if pressure:
-            current.update(pressure)
-
-        records.append(current)
-    return records
 
 def euclid(a, b):
     dx = a[0] - b[0]

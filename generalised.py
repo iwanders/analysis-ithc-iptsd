@@ -7,6 +7,8 @@ import os
 import copy
 import math
 
+# Generalised plotting for iptsd json dump, digi info dump and generated data from iptsd.py
+
 # Generalised pen state.
 from collections import namedtuple
 
@@ -117,8 +119,32 @@ def generalise_iptsd_json(events, rowcol=False):
         output.append(PenState(**updated))
     return output
 
+def states_json_load(fname):
+    import json
+    with open(fname) as f:
+        return json.load(f)
 
-def plot_trajectory(trajectories):
+def generalise_states_json(states, rowcol=False):
+    output = []
+    x_scale = (IPTS_WIDTH / (IPTS_COLUMNS - 1)) if rowcol else 1.0
+    y_scale = (IPTS_HEIGHT / (IPTS_ROWS - 1)) if rowcol else 1.0
+    for s in states:
+        updated = {
+            "proximity": True,
+            "contact": s.get("contact", None),
+            "eraser": s.get("eraser", None),
+            "button": s.get("button", None),
+            "x": s.get("x", 0.0) * x_scale,
+            "y": s.get("y", 0.0) * y_scale,
+            "x_t": s.get("x_t", None),
+            "y_t": s.get("y_t", None),
+        }
+        # print(updated)
+        output.append(PenState(**updated))
+    return output
+        
+
+def plot_trajectory(trajectories, with_tilt=False):
     import matplotlib.pyplot
 
     f = matplotlib.pyplot.figure()
@@ -164,18 +190,19 @@ def plot_trajectory(trajectories):
         #xyt = [[v.x_t, v.y_t] for v in events]
         # ax.plot(_x(xyt), _y(xyt), color=color, label=f"{name}_tilt", linestyle=":", linewidth=1.0, alpha=1.0)
         # do something with tilt.
-        tilts = []
-        for v in events:
-            if v.x_t == 0.0 and v.y_t == 0.0:
-                continue
-            yaw, tilt = wintilt_to_yaw_tilt(v.x_t, v.y_t)
-            print(f"{yaw: >.5f}  {tilt: >.5f} {v}")
-            tilts.append([v.x, v.y])
-            R = 1000
-            length = math.cos(tilt) * R
-            tilts.append([v.x + math.cos(yaw) * length, v.y + math.sin(yaw) * length])
-            tilts.append([float("nan"), float("nan")])
-        ax.plot(_x(tilts), _y(tilts), color=color, label=f"{name}_tilt", linewidth=0.5, linestyle="--", alpha=0.75)
+        if with_tilt:
+            tilts = []
+            for v in events:
+                if v.x_t == 0.0 and v.y_t == 0.0:
+                    continue
+                yaw, tilt = wintilt_to_yaw_tilt(v.x_t, v.y_t)
+                print(f"{yaw: >.5f}  {tilt: >.5f} {v}")
+                tilts.append([v.x, v.y])
+                R = 1000
+                length = math.cos(tilt) * R
+                tilts.append([v.x + math.cos(yaw) * length, v.y + math.sin(yaw) * length])
+                tilts.append([float("nan"), float("nan")])
+            ax.plot(_x(tilts), _y(tilts), color=color, label=f"{name}_tilt", linewidth=0.5, linestyle="--", alpha=0.75)
         
 
     ax.set_xlim([0, IPTS_WIDTH])
@@ -286,6 +313,13 @@ def run_compare(args):
             "properties":{"color": "green"}
         }
 
+    if args.states:
+        states_json = generalise_states_json(states_json_load(args.states), True)
+        entries[os.path.basename(args.states)] = {
+            "events":states_json,
+            "properties":{"color": "orange"}
+        }
+
 
     f = plot_trajectory(entries)
     if digi_events and iptsd_json:
@@ -308,6 +342,7 @@ if __name__ == "__main__":
     compare_parser = subparsers.add_parser('compare')
     compare_parser.add_argument("--digi", help="The ground truth digitizer file to open.")
     compare_parser.add_argument("--json", help="The iptsd json file to use.")
+    compare_parser.add_argument("--states", help="The states json file to use.")
     compare_parser.set_defaults(func=run_compare)
 
     args = parser.parse_args()
