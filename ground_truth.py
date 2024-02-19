@@ -11,6 +11,7 @@ from collections import namedtuple
 
 PenState = namedtuple("PenState", ["x", "y", "proximity", "contact", "eraser", "button", "x_t", "y_t"])
 
+
 def generalise_digi(events, rowcol=False):
     output = []
     x_scale = ((IPTS_COLUMNS - 1) / IPTS_WIDTH) if rowcol else 1.0
