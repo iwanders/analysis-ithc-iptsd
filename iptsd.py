@@ -289,19 +289,19 @@ def process_pressure(dft, config = IptsdConfig()):
     return res
 
 
-def obtain_state(grouped, insert_group=False):
+def obtain_state(grouped, insert_group=False, config = IptsdConfig()):
     records = []
     for group in grouped:
         current = {}
-        pos = process_position(group.get(IptsDftWindowPosition, None))
+        pos = process_position(group.get(IptsDftWindowPosition, None), config=config)
         if pos:
             current.update(pos)
 
-        pressure = process_pressure(group.get(IptsDftWindowPressure, None))
+        pressure = process_pressure(group.get(IptsDftWindowPressure, None), config=config)
         if pressure:
             current.update(pressure)
 
-        button = process_button(group.get(IptsDftWindowButton, None), group.get(IptsDftWindowPosition, None))
+        button = process_button(group.get(IptsDftWindowButton, None), group.get(IptsDftWindowPosition, None), config=config)
         if button:
             current.update(button)
 
