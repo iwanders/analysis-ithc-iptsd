@@ -48,4 +48,4 @@ Current understanding;
 - Windows data is different, and there `pos_from_pos` looks great. `ring_pos_from_pos` still leaves much to be desired.
 - Well, or so I thought, diagonal recording on windows; `2024_02_04_intelthcbase_bootlog_diagonal_wiggle_linux` also makse for wriggly lines.
 - Metapen M1, without tilt doesn't have any of the wiggling issues, but the three with tilt do.
-- For barrel button, seems when button depressed only has row 0's at high magnitude, rest at zero. While not pressed 2 or 3 are high.
+- For barrel button, seems when button depressed only has row 0's at high magnitude, rest at zero. While not pressed 2 or 3 are high. But this results in too many buttons pressed.
