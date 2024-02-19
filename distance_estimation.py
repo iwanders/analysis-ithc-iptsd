@@ -94,6 +94,7 @@ def cached_calc(args):
 def run_estimate_distances(args):
     states = cached_calc(args)
 
+
     # from analyse import show_trajectory
     # xy_state = [(state["x"], state["y"]) for state in states if bool(state)]
     # xy_truth = [(state["digi"].x, state["digi"].y) for state in states if "digi" in state]
@@ -106,8 +107,16 @@ def run_estimate_distances(args):
         if "pressure" in state and state["pressure"] != 0.0 and "yt" in state and abs(state["yt"]) < 1e6:
             pressed.append(state)
 
+    if args.skip_start:
+        pressed = pressed[args.skip_start:]
+    if args.skip_end:
+        # print(args.skip_end)
+        # print(len(states))
+        pressed = pressed[:-args.skip_end]
+        # print(len(pressed))
+        # lj
 
-    L = 2.0
+    # L = 2.0
     for state in pressed:
         # Project to local frame
 
@@ -122,16 +131,19 @@ def run_estimate_distances(args):
 
         yaw = math.atan2(yl, xl)
         hypot = math.sqrt(xl * xl + yl * yl)
-        print(f"Yaw: {yaw}  digi yaw: {digi_yaw}")
+        # print(f"Yaw: {yaw}  digi yaw: {digi_yaw}")
 
-        if (hypot > L):
-            hypot = float("nan")
+        # if (hypot > L):
+            # hypot = float("nan")
         # hypot = clamp(hypot, 0, L)
 
         # We know that the actual length doesn't change
-        alpha = math.acos(hypot / L)
-        beta = math.sin(alpha) * L
-        state["beta"] = beta
+        # alpha = math.acos(hypot / L)
+        L = hypot / math.cos(digi_tilt)
+        print(L)
+        alpha = digi_yaw
+        # beta = math.sin(alpha) * L
+        state["beta"] = digi_tilt
         
     xs = [p["xl"] for p in pressed]
     ys = [p["yl"] for p in pressed]
@@ -139,7 +151,7 @@ def run_estimate_distances(args):
 
     # print(xs)
 
-    sys.exit(0)
+    # sys.exit(0)
     import matplotlib.pyplot as plt
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
@@ -181,6 +193,8 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(dest="command")
 
     compare_parser = subparsers.add_parser('estimate')
+    compare_parser.add_argument("--skip-start", help="Indicies to skip at the start", type=int, default=0)
+    compare_parser.add_argument("--skip-end", help="Indicies to skip at the end", type=int, default=None)
     compare_parser.add_argument("--digi", help="estimate ground truth digitizer file to open.")
     compare_parser.add_argument("--iptsd", help="The iptsd dump to use.")
     compare_parser.set_defaults(func=run_estimate_distances)
