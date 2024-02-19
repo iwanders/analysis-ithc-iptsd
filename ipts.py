@@ -152,10 +152,10 @@ class ipts_pen_dft_window_row(Base):
                 ("magnitude", ctypes.c_uint32),
                 ("real", ctypes.c_int16 * IPTS_DFT_NUM_COMPONENTS),
                 ("imag", ctypes.c_int16 * IPTS_DFT_NUM_COMPONENTS),
-                ("first", ctypes.c_uint8),
-                ("last", ctypes.c_uint8),
-                ("mid", ctypes.c_uint8),
-                ("zero", ctypes.c_uint8),
+                ("first", ctypes.c_int8),
+                ("last", ctypes.c_int8),
+                ("mid", ctypes.c_int8),
+                ("zero", ctypes.c_int8),
                ]
 
 
@@ -214,6 +214,21 @@ class IptsReport(Convertible):
 
     def __repr__(self):
         return f"{self.__class__}: {str(self.as_dict())}"
+
+    def original_data(self):
+        if hasattr(self, "_original_data"):
+            return self._original_data
+
+    def original_header(self):
+        if hasattr(self, "_original_header"):
+            return self._original_header
+
+    def write_report(self, fname):
+        if not hasattr(self, "_original_data"):
+            raise BaseException("need to have the original data stored, call extract_reports using with_data=True")
+        with open(fname, "wb") as f:
+            f.write(self._original_header)
+            f.write(self._original_data)
 
     @classmethod
     def parse(cls, header, data):
@@ -482,7 +497,7 @@ def interpret_frames(frames):
         output.append(interpret_frame(frame))
     return output
 
-def extract_reports(frames, report_types):
+def extract_reports(frames, report_types, with_data=False):
     output = []
     for frame_header, reports in frames:
         for report_header, report_data in reports:
@@ -490,7 +505,12 @@ def extract_reports(frames, report_types):
             if p is IptsDftWindow:
                 p = IptsDftWindow.dft_type(report_header, report_data)
             if p in report_types:
-                output.append(p.parse(report_header, report_data))
+                parsed = p.parse(report_header, report_data)
+                if with_data:
+                    parsed._original_frame_header = frame_header
+                    parsed._original_header = report_header
+                    parsed._original_data = report_data
+                output.append(parsed)
     return output
 
 # Clunky helper to group unique report types into dictionaries.
