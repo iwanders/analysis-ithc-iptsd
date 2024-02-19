@@ -134,8 +134,8 @@ def generalise_states_json(states, rowcol=False):
             "contact": s.get("contact", None),
             "eraser": s.get("eraser", None),
             "button": s.get("button", None),
-            "x": s.get("x", 0.0) * x_scale,
-            "y": s.get("y", 0.0) * y_scale,
+            "x": s.get("x", float("nan")) * x_scale,
+            "y": s.get("y", float("nan")) * y_scale,
             "x_t": s.get("x_t", None),
             "y_t": s.get("y_t", None),
         }
@@ -184,8 +184,8 @@ def plot_trajectory(trajectories, with_tilt=False):
 
         ax.plot(_x(xy_contact), _y(xy_contact), color=color, label=f"{name}")
         ax.plot(_x(xy_proximity), _y(xy_proximity), color=color, label=f"{name}_prox", linewidth=0.2, alpha=0.5)
-        ax.plot(_x(xy_eraser), _y(xy_eraser), color=color, label=f"{name}_eraser", linewidth=None, marker="s", alpha=0.5, markersize=4, markerfacecolor='none')
-        ax.plot(_x(xy_button), _y(xy_button), color=color, label=f"{name}_button", linewidth=None, marker="v", alpha=1.0, markersize=4, markerfacecolor='none')    
+        ax.plot(_x(xy_eraser), _y(xy_eraser), color=color, label=f"{name}_eraser", linewidth=0, marker="s", alpha=0.5, markersize=4, markerfacecolor='none')
+        ax.plot(_x(xy_button), _y(xy_button), color=color, label=f"{name}_button", linewidth=0, marker="v", alpha=1.0, markersize=4, markerfacecolor='none')    
 
         #xyt = [[v.x_t, v.y_t] for v in events]
         # ax.plot(_x(xyt), _y(xyt), color=color, label=f"{name}_tilt", linestyle=":", linewidth=1.0, alpha=1.0)
