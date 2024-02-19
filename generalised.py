@@ -172,6 +172,7 @@ def plot_trajectory(trajectories, with_tilt=False):
     for name, spec in trajectories.items():
         events = spec["events"]
         color = spec.get("properties", {}).get("color", "black")
+        scale = spec.get("properties", {}).get("scale", 1.0)
         # First, obtain the xy vectors.
         # print(events)
         xy = [[v.x, v.y] for v in events]
@@ -184,8 +185,8 @@ def plot_trajectory(trajectories, with_tilt=False):
 
         ax.plot(_x(xy_contact), _y(xy_contact), color=color, label=f"{name}")
         ax.plot(_x(xy_proximity), _y(xy_proximity), color=color, label=f"{name}_prox", linewidth=0.2, alpha=0.5)
-        ax.plot(_x(xy_eraser), _y(xy_eraser), color=color, label=f"{name}_eraser", linewidth=0, marker="s", alpha=0.5, markersize=4, markerfacecolor='none')
-        ax.plot(_x(xy_button), _y(xy_button), color=color, label=f"{name}_button", linewidth=0, marker="v", alpha=1.0, markersize=4, markerfacecolor='none')    
+        ax.plot(_x(xy_eraser), _y(xy_eraser), color=color, label=f"{name}_eraser", linewidth=0, marker="s", alpha=0.7, markersize=5 * scale, markerfacecolor='none')
+        ax.plot(_x(xy_button), _y(xy_button), color=color, label=f"{name}_button", linewidth=0, marker="v", alpha=1.0, markersize=4 * scale, markerfacecolor='none')    
 
         #xyt = [[v.x_t, v.y_t] for v in events]
         # ax.plot(_x(xyt), _y(xyt), color=color, label=f"{name}_tilt", linestyle=":", linewidth=1.0, alpha=1.0)
@@ -310,7 +311,7 @@ def run_compare(args):
         iptsd_json = generalise_iptsd_json(iptsd_json_load(args.json))
         entries[os.path.basename(args.json)] = {
             "events":iptsd_json,
-            "properties":{"color": "green"}
+            "properties":{"color": "green", "scale":1.5}
         }
 
     if args.states:
