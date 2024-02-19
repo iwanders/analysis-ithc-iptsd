@@ -5,11 +5,73 @@ from ipts import  IPTS_COLUMNS, IPTS_ROWS, IPTS_WIDTH, IPTS_HEIGHT
 from iptsd import iptsd_json_load
 import os
 import copy
+import math
 
 # Generalised pen state.
 from collections import namedtuple
 
 PenState = namedtuple("PenState", ["x", "y", "proximity", "contact", "eraser", "button", "x_t", "y_t"])
+
+# Yaw is x = 0, standard counter clockwise.
+# Tilt is between screen and pen, not between perpendicular and pen.
+def wintilt_to_yaw_tilt(xtilt_deg, ytilt_deg):
+    # def R(a):
+    #    return np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
+    xtilt = math.radians(xtilt_deg)
+    ytilt = math.radians(ytilt_deg)
+    # print(f"xtilt; {xtilt} ytilt {ytilt}")
+    # Lets just calculate the normal vectors of the two planes
+
+    # For xtilt, rotating the X axis by tiltx gives us the normal.
+    xtilt_x = math.cos(xtilt)
+    xtilt_y = -math.sin(xtilt)
+    xtilt_z = 0
+
+    # For ytilt, rotating the y axis by tilty gives us the normal
+    ytilt_x = 0
+    ytilt_y = math.cos(ytilt)
+    ytilt_z = -math.sin(ytilt)
+
+    # Now we can take the crossproduct to get the line vector.
+    def cross(a, b):
+        return [
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0]
+        ]
+
+    a = [xtilt_x, xtilt_y, xtilt_z]
+    b = [ytilt_x, ytilt_y, ytilt_z]
+    
+    linedir = cross(a, b)
+    # print(linedir)
+
+    # Which is a position in xyz, so now the yaw and tilt just drop out
+    yaw = math.atan2(linedir[1], linedir[0])
+    hypot = math.sqrt(linedir[0]**2 + linedir[1]**2)
+    tilt = math.atan2(linedir[2], hypot)
+
+    # print(f"yaw {yaw}  tilt {tilt}  ")
+    return (yaw, tilt)
+
+if False:
+    def near(a, b, resolution=0.001):
+        for i in range(1):
+            if abs(a[i] - b[i]) > resolution:
+                raise BaseException(f"Failed: {a[i]} differs from {b[i]} at dim {i}")
+            else:
+                print(f"Pass: {a[i]} equal to {b[i]} on dim {i}  ")
+        print()
+
+    near(wintilt_to_yaw_tilt(0, 0), (0, -math.pi / 2))
+    near(wintilt_to_yaw_tilt(45, 0), (0, math.radians(45)))
+    near(wintilt_to_yaw_tilt(0, 45), (math.radians(90), math.radians(45)))
+    near(wintilt_to_yaw_tilt(45, 45), (math.radians(45), math.radians(45)))
+
+    near(wintilt_to_yaw_tilt(-45, 0), (math.pi, -math.radians(45)))
+    near(wintilt_to_yaw_tilt(0, -45), (-math.radians(90), math.radians(45)))
+    near(wintilt_to_yaw_tilt(-45, -45), (-math.radians(45), math.radians(45)))
+    sys.exit(1)
 
 
 def generalise_digi(events, rowcol=False):
@@ -28,8 +90,8 @@ def generalise_digi(events, rowcol=False):
             # <property name="tilty" logmin="0" logmax="18000" res="100" unit="deg" />
             # tiltx and tilty appear to be in in an angle? 18000 / 100 = 180?
             # see https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/required-hid-top-level-collections#x-tilt
-            "x_t": (e.tiltx / 18000) / 100.0,
-            "y_t": (e.tilty / 18000) / 100.0,
+            "x_t": e.tiltx / 100.0,
+            "y_t": e.tilty / 100.0,
         }
         output.append(PenState(**updated))
     return output
@@ -97,8 +159,22 @@ def plot_trajectory(trajectories):
         ax.plot(_x(xy_eraser), _y(xy_eraser), color=color, label=f"{name}_eraser", linewidth=None, marker="s", alpha=0.5, markersize=4, markerfacecolor='none')
         ax.plot(_x(xy_button), _y(xy_button), color=color, label=f"{name}_button", linewidth=None, marker="v", alpha=1.0, markersize=4, markerfacecolor='none')    
 
-        xyt = [[v.x_t, v.y_t] for v in events]
+        #xyt = [[v.x_t, v.y_t] for v in events]
         # ax.plot(_x(xyt), _y(xyt), color=color, label=f"{name}_tilt", linestyle=":", linewidth=1.0, alpha=1.0)
+        # do something with tilt.
+        tilts = []
+        for v in events:
+            if v.x_t == 0.0 and v.y_t == 0.0:
+                continue
+            yaw, tilt = wintilt_to_yaw_tilt(v.x_t, v.y_t)
+            # print(f"{yaw: >.5f}  {tilt: >.5f} {v}")
+            tilts.append([v.x, v.y])
+            R = 1000
+            length = math.cos(tilt) * R
+            tilts.append([v.x + math.cos(yaw) * length, v.y + math.sin(yaw) * length])
+            tilts.append([float("nan"), float("nan")])
+        ax.plot(_x(tilts), _y(tilts), color=color, label=f"{name}_tilt", linewidth=0.5, linestyle="--", alpha=0.75)
+        
 
     ax.set_xlim([0, IPTS_WIDTH])
     ax.set_ylim([0, IPTS_HEIGHT])

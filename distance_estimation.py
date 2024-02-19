@@ -6,7 +6,7 @@ import shelve
 
 from ipts import iptsd_read, extract_reports, IptsDftWindowPosition, IptsDftWindowPressure, group_reports
 from iptsd import IptsdConfig, process_position, process_pressure, clamp
-from ground_truth import generalise_digi
+from ground_truth import generalise_digi, wintilt_to_yaw_tilt
 from digi_info import load_digiinfo_xml
 
 def obtain_state(grouped):
@@ -91,73 +91,14 @@ def cached_calc(args):
             db[key] = states
             return states
 
-def wintilt_to_yaw_tilt(xtilt_deg, ytilt_deg):
-    # def R(a):
-    #    return np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
-    xtilt = math.radians(xtilt_deg)
-    ytilt = math.radians(ytilt_deg)
-    # print(f"xtilt; {xtilt} ytilt {ytilt}")
-    # Lets just calculate the normal vectors of the two planes
-
-    # For xtilt, rotating the X axis by tiltx gives us the normal.
-    xtilt_x = math.cos(xtilt)
-    xtilt_y = -math.sin(xtilt)
-    xtilt_z = 0
-
-    # For ytilt, rotating the y axis by tilty gives us the normal
-    ytilt_x = 0
-    ytilt_y = math.cos(ytilt)
-    ytilt_z = -math.sin(ytilt)
-
-    # Now we can take the crossproduct to get the line vector.
-    def cross(a, b):
-        return [
-            a[1] * b[2] - a[2] * b[1],
-            a[2] * b[0] - a[0] * b[2],
-            a[0] * b[1] - a[1] * b[0]
-        ]
-
-    a = [xtilt_x, xtilt_y, xtilt_z]
-    b = [ytilt_x, ytilt_y, ytilt_z]
-    
-    linedir = cross(a, b)
-    # print(linedir)
-
-    # Which is a position in xyz, so now the yaw and tilt just drop out
-    yaw = math.atan2(linedir[1], linedir[0])
-    hypot = math.sqrt(linedir[0]**2 + linedir[1]**2)
-    tilt = math.atan2(linedir[2], hypot)
-
-    # print(f"yaw {yaw}  tilt {tilt}  ")
-    return (yaw, tilt)
-
-if False:
-    def near(a, b, resolution=0.001):
-        for i in range(1):
-            if abs(a[i] - b[i]) > resolution:
-                raise BaseException(f"Failed: {a[i]} differs from {b[i]} at dim {i}")
-            else:
-                print(f"Pass: {a[i]} equal to {b[i]} on dim {i}  ")
-        print()
-
-    near(wintilt_to_yaw_tilt(0, 0), (0, -math.pi / 2))
-    near(wintilt_to_yaw_tilt(45, 0), (0, math.radians(45)))
-    near(wintilt_to_yaw_tilt(0, 45), (math.radians(90), math.radians(45)))
-    near(wintilt_to_yaw_tilt(45, 45), (math.radians(45), math.radians(45)))
-
-    near(wintilt_to_yaw_tilt(-45, 0), (math.pi, -math.radians(45)))
-    near(wintilt_to_yaw_tilt(0, -45), (-math.radians(90), math.radians(45)))
-    near(wintilt_to_yaw_tilt(-45, -45), (-math.radians(45), math.radians(45)))
-    sys.exit(1)
-
 def run_estimate_distances(args):
     states = cached_calc(args)
 
-    from analyse import show_trajectory
-    xy_state = [(state["x"], state["y"]) for state in states if bool(state)]
-    xy_truth = [(state["digi"].x, state["digi"].y) for state in states if "digi" in state]
-    show_trajectory({'xy_state': xy_state, 'xy_truth': xy_truth})
-    add_edges(states)
+    # from analyse import show_trajectory
+    # xy_state = [(state["x"], state["y"]) for state in states if bool(state)]
+    # xy_truth = [(state["digi"].x, state["digi"].y) for state in states if "digi" in state]
+    # show_trajectory({'xy_state': xy_state, 'xy_truth': xy_truth})
+    # add_edges(states)
 
 
     pressed = []
@@ -169,7 +110,11 @@ def run_estimate_distances(args):
     L = 2.0
     for state in pressed:
         # Project to local frame
-        print(state)
+
+        digi_yaw, digi_tilt = wintilt_to_yaw_tilt(state["digi"].x_t, state["digi"].y_t)
+
+
+        # print(state)
         xl = state["xt"] - state["x"]
         yl = state["yt"] - state["y"]
         state["xl"] = xl
@@ -177,7 +122,7 @@ def run_estimate_distances(args):
 
         yaw = math.atan2(yl, xl)
         hypot = math.sqrt(xl * xl + yl * yl)
-        print(f"Hypot: {hypot}")
+        print(f"Yaw: {yaw}  digi yaw: {digi_yaw}")
 
         if (hypot > L):
             hypot = float("nan")
@@ -194,6 +139,7 @@ def run_estimate_distances(args):
 
     # print(xs)
 
+    sys.exit(0)
     import matplotlib.pyplot as plt
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
