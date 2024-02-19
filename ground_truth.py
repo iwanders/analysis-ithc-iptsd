@@ -12,6 +12,8 @@ from collections import namedtuple
 
 PenState = namedtuple("PenState", ["x", "y", "proximity", "contact", "eraser", "button", "x_t", "y_t"])
 
+# Something is wrong here... or in my interpretetation of the data, for 2024_02_19_rotated_angled_touching_pen this should just
+# point inwards, currently it does not.
 # Yaw is x = 0, standard counter clockwise.
 # Tilt is between screen and pen, not between perpendicular and pen.
 def wintilt_to_yaw_tilt(xtilt_deg, ytilt_deg):
@@ -167,7 +169,7 @@ def plot_trajectory(trajectories):
             if v.x_t == 0.0 and v.y_t == 0.0:
                 continue
             yaw, tilt = wintilt_to_yaw_tilt(v.x_t, v.y_t)
-            # print(f"{yaw: >.5f}  {tilt: >.5f} {v}")
+            print(f"{yaw: >.5f}  {tilt: >.5f} {v}")
             tilts.append([v.x, v.y])
             R = 1000
             length = math.cos(tilt) * R
