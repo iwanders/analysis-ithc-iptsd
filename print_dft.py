@@ -260,7 +260,7 @@ def run_plot_spectrogram(frames):
 
     import matplotlib.pyplot as plt
     import scipy.misc
-    scipy.misc.imsave('/tmp/spectrogram.png', rows)
+    scipy.misc.imsave(args.spectrogram, rows)
     plt.imshow(rows, origin='lower')
     plt.show()
 
@@ -349,6 +349,7 @@ if __name__ == "__main__":
 
     plot_spectrogram_parser = subparsers.add_parser('plot_spectrogram')
     plot_spectrogram_parser.add_argument("input", help="The iptsd dump file to open")
+    plot_spectrogram_parser.add_argument("--spectrogram", help="Write histogram here", default="/tmp/spectrogram.png")
     plot_spectrogram_parser.set_defaults(func=run_plot_spectrogram)
 
     decode_button_parser = subparsers.add_parser('decode_button')
