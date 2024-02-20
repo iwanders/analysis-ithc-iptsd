@@ -63,6 +63,23 @@ This pattern, and the sizes of individual packets are identical between Slim Pen
 - PenGeneral and Magnitude show up in the same block.
 
 
+Speculating, from patents it seems it is common to have several sections in
+each detection cycle. Hunch;
+
+- `0x1a`: Digital data frame?
+- `0x0d`: Pressure is here, perhaps analog frame?
+
+
+
+In `0x1a`, the magnitude field still matches the center most coefficients, but that is not the highest or single peak.
+- Button has 4 rows for both dimensions
+- `0x0a` has 16 rows for both dimensions.
+- The frequencies never change in the `0x1a` frame.
+- When hovering, button goes to zeros. `0x0a` goes to only having rows `2,3`, `6,7`, `10,11`, `14,15`
+- Rows are consistent, that is; the entire row seems to represent the same data.
+
+
+
 In messages, following, let `----` denote never changes.
 
 ## IptsPenGeneral
