@@ -26,6 +26,18 @@ def bool_octet_to_byte(z):
         a |= (1 << 7 - i) if v else 0
     return a
 
+def byte_to_bool_octet(z):
+    a = []
+    for i in range(8):
+        a.append(bool(z & ((1 << 7 - i))))
+    return a
+
+if True:
+    assert(1 == bool_octet_to_byte(byte_to_bool_octet(1)))
+    assert(63 == bool_octet_to_byte(byte_to_bool_octet(63)))
+    assert(0xaa == bool_octet_to_byte(byte_to_bool_octet(0xaa)))
+    assert(0xf0 == bool_octet_to_byte(byte_to_bool_octet(0xf0)))
+
 def hexdump(data, columns=64):
     for row in chunks(data, columns):
         print("".join(f"{z:0>2x} " for z in row))
@@ -272,6 +284,36 @@ def dimension_mag(dft):
     return [row_mag(dft, i) for i in range(dft.header.num_rows)]
 
 
+def manchester_encode(data):
+    encoded = []
+    as_bits = []
+    for b in data:
+        as_bits.extend(byte_to_bool_octet(b))
+    # Probably the IEEE one; It states that a logic 0 is represented by a high–low signal sequence and a logic 1 is represented by a low–high signal sequence.
+    lookup = {False: (True, False), True:(False, True)}
+    for bit in as_bits:
+        encoded.extend(lookup.get(bit, False))
+    return bytes([bool_octet_to_byte(octet) for octet in list(chunks(encoded, 8))])
+    
+def manchester_decode(data):
+    decoded = []
+    as_bits = []
+    for b in data:
+        as_bits.extend(byte_to_bool_octet(b))
+    # Probably the IEEE one; It states that a logic 0 is represented by a high–low signal sequence and a logic 1 is represented by a low–high signal sequence.
+    lookup = {(True, False): False, (False, True): True}
+    for crumb in chunks(as_bits, 2):
+        # print(crumb)
+        decoded.append(lookup.get((crumb[0], crumb[1]), False))
+    return bytes([bool_octet_to_byte(octet) for octet in list(chunks(decoded, 8))])
+
+if True:
+    orig = bytes([1])
+    assert(orig == manchester_decode(manchester_encode(orig)))
+    orig = bytes([1, 3, 4, 5])
+    assert(orig == manchester_decode(manchester_encode(orig)))
+    orig = bytes([0xaa, 0xff, 0x00, 63])
+    assert(orig == manchester_decode(manchester_encode(orig)))
 
 def run_decode_button(args):
     grouped = load_relevant(args.input)
@@ -311,16 +353,29 @@ def run_decode_button(args):
             current.append(False)
 
     print("Found transmissions")
+    everything = bytearray([])
     uniq = set()
     for trans in transmissions:
         as_octets = list(chunks(trans, 8))
         with_bytes = bytes([bool_octet_to_byte(octet) for octet in as_octets])
+        everything.extend(with_bytes)
         uniq.add(with_bytes)
         print(hexify(with_bytes))
+
+    
 
     print("uniques:")
     for trans in sorted(list(uniq)):
         print(hexify(trans))
+        average = sum(trans) / len(trans)
+        print(f"average of that was: {average}")
+        # very... average, probably whitened?
+
+    for trans in sorted(list(uniq)):
+        print(hexify(trans), " -> ", hexify(manchester_decode(trans)))
+
+
+    print(hexify(everything), " -> ", hexify(manchester_decode(everything)))
 
 if __name__ == "__main__":
     import argparse
