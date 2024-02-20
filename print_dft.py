@@ -4,13 +4,34 @@ import sys
 import json
 
 from ipts import iptsd_read, extract_reports, chunk_reports
-from ipts import IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a
+from ipts import IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a, IPTS_DFT_NUM_COMPONENTS
 from digi_info import load_digiinfo_xml
+MID = int(IPTS_DFT_NUM_COMPONENTS / 2)
 
 RED = "\033[0;31m"
 GREEN = "\033[0;32m"
 RESET = "\033[0m"
 YELLOW = "\033[1;33m"
+
+
+# https://stackoverflow.com/a/312464
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+def bool_octet_to_byte(z):
+    a = 0
+    for i, v in enumerate(z):
+        a |= (1 << 7 - i) if v else 0
+    return a
+
+def hexdump(data, columns=64):
+    for row in chunks(data, columns):
+        print("".join(f"{z:0>2x} " for z in row))
+
+def hexify(data):
+    return "".join(f"{z:0>2x} " for z in data)
 
 def print_dft(d, row_limit=9999, row_colors={}):
     def format_r(r):
@@ -71,7 +92,7 @@ def run_single(args):
 def run_combined(args):
     import time
     grouped = load_relevant(args.input)
-    grouped = grouped[10:-10]
+    # grouped = grouped[10:-10]
 
     for i, group in enumerate(grouped):
         print("\n\n\n")
@@ -94,9 +115,8 @@ def run_row_comparison(args):
             if row.magnitude < 1000:
                 return None
             #combs = [f"{r.real[i]: >5}, {r.imag[i]: >5}" for i in range(9)]
-            mid = 4
-            center_r = row.real[mid] 
-            center_i = row.imag[mid]
+            center_r = row.real[MID] 
+            center_i = row.imag[MID]
             if row.magnitude == 0 or center_r == 0 or center_i == 0:
                 return None
             reals = [(r if abs(r) > 20 else 0.0) for r in row.real]
@@ -133,6 +153,175 @@ def run_row_comparison(args):
         time.sleep(0.1)
 
 
+
+def run_plot_iq(frames):
+    import time
+    grouped = load_relevant(args.input)
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    def R(a):
+        return np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
+    result = {}
+    def append(name, entry):
+        if not name in result:
+            result[name] = []
+        result[name].append(entry)
+
+    angle_pos = 0.0
+    for i, group in enumerate(grouped):
+        window0a_counter = 0
+        for dft in group:
+            if type(dft) == IptsDftWindowPosition2:
+                angle_pos = np.arctan2(dft.x[1].imag[MID], dft.x[1].real[MID])
+            if type(dft) == IptsDftWindowButton:
+                pass
+                # index = 2 if dft.x[3].magnitude < dft.x[2].magnitude else 2
+                # z = R(angle_pos).T.dot(np.array((dft.x[index].imag[MID] , dft.x[index].real[MID])))
+                # append(f"2or3rot:*", z)
+                # append(f"2or3:*", (dft.x[index].imag[MID] , dft.x[index].real[MID]))
+            if type(dft) == IptsDftWindow0x0a and window0a_counter == 0:
+                # v = (dft.x[3].imag[MID] , dft.x[3].real[MID])
+                # angle_pos = np.arctan2(dft.x[3].imag[MID], dft.x[3].real[MID])
+                # z = R(-angle_pos).T.dot(np.array((dft.x[4].imag[MID] , dft.x[4].real[MID])))
+                # append(f"0x0a[0]_3:*", v)
+                # append(f"0x0a[0]_3_rot:*", z)
+                window0a_counter += 1
+            if type(dft) == IptsDftWindow0x0a and window0a_counter == 1:
+                window0a_counter += 1
+
+
+
+
+    def plot(name):
+        p = np.array(result[name])
+        if name.endswith("*"):
+            plt.scatter(p[:, 0], p[:, 1], c=range(p.shape[0]), label=name)
+            plt.plot(p[:, 0], p[:, 1], label=name, linewidth=0.3)
+        else:
+            plt.plot(p[:, 0], p[:, 1], label=name)
+
+    for k in result.keys():
+        plot(k)
+
+    plt.legend()
+    plt.show()
+
+
+
+
+
+def run_plot_spectrogram(frames):
+    import time
+    import math
+    grouped = load_relevant(args.input)
+
+    import matplotlib.pyplot as plt
+
+    def norms(r):
+        return [math.sqrt((r.imag[i]**2 + r.real[i]**2)) for i in range(9)]
+
+    def logrow(norm):
+        return [math.log(x) if x != 0 else 0 for x in norm]
+    rows = []
+
+    entries = 64 + 8
+    for i, group in enumerate(grouped):
+        window0a_counter = 0
+        row = []
+        for dft in group:
+            if type(dft) == IptsDftWindowPosition2:
+                pass
+            if type(dft) == IptsDftWindowButton:
+                for i in range(4):
+                    row.extend(norms(dft.x[i]))
+                for i in range(4):
+                    row.extend(norms(dft.y[i]))
+                pass
+            if type(dft) == IptsDftWindow0x0a and window0a_counter == 0:
+                for i in range(16):
+                    row.extend(norms(dft.x[i]))
+                for i in range(16):
+                    row.extend(norms(dft.y[i]))
+                pass
+                window0a_counter += 1
+            if type(dft) == IptsDftWindow0x0a and window0a_counter == 1:
+                for i in range(16):
+                    row.extend(norms(dft.x[i]))
+                for i in range(16):
+                    row.extend(norms(dft.y[i]))
+                window0a_counter += 1
+        row.extend([0] * (entries * 9 - len(row)))
+
+        row = logrow(row)
+
+        rows.append(row)
+
+    import matplotlib.pyplot as plt
+    import scipy.misc
+    scipy.misc.imsave('/tmp/spectrogram.png', rows)
+    plt.imshow(rows, origin='lower')
+    plt.show()
+
+
+def row_mag(dft, i):
+    return dft.x[i].magnitude + dft.y[i].magnitude
+
+def dimension_mag(dft):
+    return [row_mag(dft, i) for i in range(dft.header.num_rows)]
+
+
+
+def run_decode_button(args):
+    grouped = load_relevant(args.input)
+    def get_button(group):
+        for dft in group:
+            if type(dft) == IptsDftWindowButton:
+                return dft
+
+    transmissions = []
+    current = []
+    for group in grouped:
+        button = get_button(group)
+        if not button:
+            continue
+        dims = dimension_mag(button)
+        maxdim = max(dims)
+        dims = [z == maxdim for z in dims]
+
+        if dims[0]:
+            #print("\nfirst row highest")
+            # Sync, transmission starts for sure.
+            if len(current):
+                transmissions.append(current)
+                current = []
+        elif dims[1]:
+            print("\nSync!")
+            # Sync, transmission starts for sure.
+            if len(current):
+                transmissions.append(current)
+                current = []
+        elif dims[2]:
+            # Lets say a 0
+            print("1", end="")
+            current.append(True)
+        elif dims[3]:
+            print("0", end="")
+            current.append(False)
+
+    print("Found transmissions")
+    uniq = set()
+    for trans in transmissions:
+        as_octets = list(chunks(trans, 8))
+        with_bytes = bytes([bool_octet_to_byte(octet) for octet in as_octets])
+        uniq.add(with_bytes)
+        print(hexify(with_bytes))
+
+    print("uniques:")
+    for trans in sorted(list(uniq)):
+        print(hexify(trans))
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
@@ -153,6 +342,18 @@ if __name__ == "__main__":
     row_comparison_parser = subparsers.add_parser('row_comparison')
     row_comparison_parser.add_argument("input", help="The iptsd dump file to open")
     row_comparison_parser.set_defaults(func=run_row_comparison)
+
+    plot_iq_parser = subparsers.add_parser('plot_iq')
+    plot_iq_parser.add_argument("input", help="The iptsd dump file to open")
+    plot_iq_parser.set_defaults(func=run_plot_iq)
+
+    plot_spectrogram_parser = subparsers.add_parser('plot_spectrogram')
+    plot_spectrogram_parser.add_argument("input", help="The iptsd dump file to open")
+    plot_spectrogram_parser.set_defaults(func=run_plot_spectrogram)
+
+    decode_button_parser = subparsers.add_parser('decode_button')
+    decode_button_parser.add_argument("input", help="The iptsd dump file to open")
+    decode_button_parser.set_defaults(func=run_decode_button)
 
     args = parser.parse_args()
     if (args.command is None):

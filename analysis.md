@@ -79,6 +79,27 @@ In `0x1a`, the magnitude field still matches the center most coefficients, but t
 - Rows are consistent, that is; the entire row seems to represent the same data.
 
 
+## DftButton
+
+I don't think this is the button, it does transfer binary data though:
+
+![2024_02_19_dft_button_histogram](media/2024_02_19_dft_button_histogram.png)
+
+- Row 0: unknown
+- Row 1: Sync marker?
+- Row 2/3: One of these is high to represent bit state?
+
+Yeah, this is definitely a repeating bytestream!
+
+
+For Slim Pen 2, it's a 20 byte repeating pattern most of the time. There's
+a few outliers that have different data, rather 153 bits.
+
+For Metapen M2, we see at most two bytes, or rather... 14 bits. More variation
+than the slim pen... but it is a repeating pattern of 22 bytes. There's just
+more sync markers. Same with the metapen m1, also 22 bytes.
+
+
 
 In messages, following, let `----` denote never changes.
 
