@@ -81,7 +81,9 @@ In `0x1a`, the magnitude field still matches the center most coefficients, but t
 
 ## DftButton
 
-I don't think this is the button, it does transfer binary data though:
+Currently the first row of this DFT frame is used to determine the button state, by combining it with the phase of the position.
+
+I don't think this is the button in the first column, it does transfer binary data though:
 
 ![2024_02_19_dft_button_histogram](media/2024_02_19_dft_button_histogram.png)
 
@@ -98,6 +100,26 @@ a few outliers that have different data, rather 153 bits.
 For Metapen M2, we see at most two bytes, or rather... 14 bits. More variation
 than the slim pen... but it is a repeating pattern of 22 bytes. There's just
 more sync markers. Same with the metapen m1, also 22 bytes.
+
+On Slim Pen 2, bit ratio of 1s to 0s is 1.14, metapen m2 is at 1.25. Likely whitened data.
+
+For the slim pen 2 we clearly know the start and end of the transmission.
+If we align the metapen's against the most matching data from the slim pen, we get:
+
+For the Slim Pen 2:
+```
+7a 99 ca 56 97 19 1e 58 2d 58 b4 9d 10 77 38 4c d5 12 da 80
+```
+
+For Metapen M2, we don't really know where the signal stops and starts.
+```
+7f 9c 75 84 6f 7c 63 68 59 30 57 30 4c d4 41 dc 3a 58 31 5c 2f bc 7f 9c 75 84 6f...
+```
+
+For Metapen M1, same story.
+```
+78 8c 75 84 6d 68 61 7c 59 30 55 24 49 d0 45 c4 3e 40 32 54 2f bc 78 8c 75 84 6d ...
+```
 
 
 

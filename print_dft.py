@@ -189,8 +189,8 @@ def run_plot_iq(frames):
                 angle_pos = np.arctan2(dft.x[1].imag[MID], dft.x[1].real[MID])
             if type(dft) == IptsDftWindowButton:
                 pass
-                # index = 2 if dft.x[3].magnitude < dft.x[2].magnitude else 2
-                # z = R(angle_pos).T.dot(np.array((dft.x[index].imag[MID] , dft.x[index].real[MID])))
+                index = 2 if dft.x[3].magnitude < dft.x[2].magnitude else 2
+                z = R(angle_pos).T.dot(np.array((dft.x[index].imag[MID] , dft.x[index].real[MID])))
                 # append(f"2or3rot:*", z)
                 # append(f"2or3:*", (dft.x[index].imag[MID] , dft.x[index].real[MID]))
             if type(dft) == IptsDftWindow0x0a and window0a_counter == 0:
@@ -307,6 +307,19 @@ def manchester_decode(data):
         decoded.append(lookup.get((crumb[0], crumb[1]), False))
     return bytes([bool_octet_to_byte(octet) for octet in list(chunks(decoded, 8))])
 
+def bit_ratio(data):
+    # Just add one to both to avoid division by zero.
+    zeros = 1
+    ones = 1
+    for b in data:
+        for x in byte_to_bool_octet(b):
+            if x:
+                ones += 1
+            else:
+                zeros += 1
+    return zeros / ones
+
+
 if True:
     orig = bytes([1])
     assert(orig == manchester_decode(manchester_encode(orig)))
@@ -360,22 +373,23 @@ def run_decode_button(args):
         with_bytes = bytes([bool_octet_to_byte(octet) for octet in as_octets])
         everything.extend(with_bytes)
         uniq.add(with_bytes)
-        print(hexify(with_bytes))
+        # print(hexify(with_bytes))
 
     
 
     print("uniques:")
     for trans in sorted(list(uniq)):
-        print(hexify(trans))
+        #print(hexify(trans))
         average = sum(trans) / len(trans)
-        print(f"average of that was: {average}")
+        print(f"{hexify(trans)} Avg: {average}, bit ratio: {bit_ratio(trans)}")
         # very... average, probably whitened?
 
     for trans in sorted(list(uniq)):
-        print(hexify(trans), " -> ", hexify(manchester_decode(trans)))
+        decoded = manchester_decode(trans)
+        print(hexify(trans), " -> ", hexify(decoded),  f"bit ratio {bit_ratio(decoded)}")
 
 
-    print(hexify(everything), " -> ", hexify(manchester_decode(everything)))
+    print("Combined: ", hexify(everything))
 
 if __name__ == "__main__":
     import argparse
