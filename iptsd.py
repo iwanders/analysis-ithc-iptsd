@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# Holds python implementations of the algoritms implemented in iptsd.
+# Some of them are unverified against c++.
 
 import json
 from collections import namedtuple

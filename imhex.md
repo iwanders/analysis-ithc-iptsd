@@ -1,5 +1,6 @@
 # Imhex pattern;
 
+Some patterns for use with [ImHex](https://github.com/WerWolv/ImHex).
 
 ## IntelTHCBase frame
 For the raw data frames from thcbase;

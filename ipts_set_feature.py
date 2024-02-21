@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 
+# Attempt to set hid features through python.
+# So far not sure if this even does anything... it was kind of a blind
+# implementation without a way to test whether it works... mostly a;
+# throw mud, see if it sticks approach here.
+
+
+# from https://github.com/vpelletier/python-hidraw/tree/master
+
 import argparse
 
 """
@@ -11,7 +19,6 @@ import argparse
 """
 
 
-# from https://github.com/vpelletier/python-hidraw/tree/master
 import fcntl
 import ctypes
 # import ioctl_opt

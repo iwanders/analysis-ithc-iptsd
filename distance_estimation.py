@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 
+# Attempt at using the DigiInfo together with the two position estimates to
+# actually calculate the distance between the tip emitter and tilt emitter.
+# Didn't really pan out as the DigiInfo tilt data seems to be updating
+# infrequently.
+
 import sys
 import math
 import shelve
+
 
 from ipts import iptsd_read, extract_reports, IptsDftWindowPosition, IptsDftWindowPressure, group_reports
 from iptsd import IptsdConfig, clamp, obtain_state

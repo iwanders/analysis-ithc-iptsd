@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# First attempt at a different button detection, but without all the insights
+# from the spectrograms. So probably useless now.
+
 import sys
 import json
 

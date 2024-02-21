@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Written when taking a step back and re-evaluating all data interpretation.
+# Allows dumping spectograms of the data.
+
 import sys
 import json
 

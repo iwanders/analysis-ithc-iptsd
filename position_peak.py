@@ -13,6 +13,9 @@
 # Perhaps https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/how-to-capture-a-usb-event-trace
 # Or wireshark with https://wiki.wireshark.org/CaptureSetup/USB#windows
 
+# This file is mostly about peak finding... which is where I focussed first as the tilt emitter position estimate
+# appeared to be flaky.
+
 
 
 import sys

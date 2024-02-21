@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 
+# Parser for xmls exported from 'DigiInfo' a diagnostic tool by Microsoft
+# https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/simultaneous-pen-and-touch-validation#additional-testing-tools
+# Direct download link; https://download.microsoft.com/download/C/8/7/c8729e82-feca-482b-801d-f65979615003/digiinfo-19h1.zip
+
 # It's xml... but we can absolutely parse this in a more performant way
 # by just using strings.
+
+# It's great for positions, but the tilt actually it reports seems to be updating less than we would get with other tools?
 
 from collections import namedtuple
 

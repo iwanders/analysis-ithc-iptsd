@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
+# Generalised plotting for iptsd json dump, digi info dump and generated data from iptsd.py
+
 from digi_info import load_digiinfo_xml
 from ipts import  IPTS_COLUMNS, IPTS_ROWS, IPTS_WIDTH, IPTS_HEIGHT
 from iptsd import iptsd_json_load
 import os
 import copy
 import math
-
-# Generalised plotting for iptsd json dump, digi info dump and generated data from iptsd.py
 
 # Generalised pen state.
 from collections import namedtuple

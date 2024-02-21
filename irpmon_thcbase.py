@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Module to parse IrpMon log files and convert them to an binary dump like iptsd produces.
+
+
 import sys
 import codecs
 import json

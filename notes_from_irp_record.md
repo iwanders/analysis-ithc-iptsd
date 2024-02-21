@@ -1,4 +1,9 @@
+
+First notes from recording with IRPMon on windows.
+
+
 # On setup
+
 
 ```
 Irp(index=55, irp_id=2751, function=<Function.InternalDeviceControl: 9>, time='2024-01-28 6:29:53 PM', status=<Status.STATUS_SUCCESS: 1>, address=18446694660409934656, data=[], previous_mode=<Mode.UserMode: 2>, requestor_mode=<Mode.UserMode: 2>)

@@ -1,4 +1,8 @@
 
+# Module to parse the ipts data frames and HID reports.
+# Also contains some helpers for grouping.
+# And loading binary iptsd data dumps.
+
 import ctypes
 import struct
 from enum import Enum
@@ -6,7 +10,7 @@ from collections import namedtuple
 
 
 # ------------------------------------------------------------------------
-# Known constants.
+# 'Known' constants.
 # ------------------------------------------------------------------------
 
 
