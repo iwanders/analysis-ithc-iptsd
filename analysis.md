@@ -1,6 +1,15 @@
+# General
+
+Should probably figure out how to load the dumps from [here](https://github.com/quo/iptsd/issues/5#issuecomment-1193124454), to compare against Slim Pen 1, but the `DeviceInfo` in that reports a `buffer_size` of `18374686479679160320`, format probably changed?
+
+- Slim Pen 2 is MPP v2.6
+- Metapen M1 is MPP 1.51
+- Metapen M2 is MPP 2.0
+
+
 # Breakdown of messages from windows
 
-First bytes of messages coming from the driver.
+First byte of messages coming from the driver.
 
 The multiple records on `0x1a` is not a bug in the parser, data actually contains this, and it appears to be unique.
 
@@ -66,7 +75,7 @@ This pattern, and the sizes of individual packets are identical between Slim Pen
 Speculating, from patents it seems it is common to have several sections in
 each detection cycle. Hunch;
 
-- `0x1a`: Digital data frame?
+- `IptsDftWindowButton` and `0x1a`: Digital data frames? Fore 
 - `0x0d`: Pressure is here, perhaps analog frame?
 
 
@@ -110,6 +119,7 @@ For the Slim Pen 2:
 ```
 7a 99 ca 56 97 19 1e 58 2d 58 b4 9d 10 77 38 4c d5 12 da 80
 ```
+This doesn't appear to change, one of the first data captures I have has the exact same (even from linux).
 
 For Metapen M2, we don't really know where the signal stops and starts.
 ```
@@ -122,8 +132,46 @@ For Metapen M1, same story.
 ```
 
 
+Ah, on the metapen m2, we do see the first column of the Button Dft window go high.
 
-In messages, following, let `----` denote never changes.
+
+For the metapen m1, we do see that the first column matches the button signal.
+For the Slim Pen 2 and Metapen M2 however, the first column does change in strength,
+main thing seen however is that we see the 'data' dft's go alternating.
+
+
+
+## IptsDftWindow0x0a
+
+### Metapen M1
+For Metapen M1, this is always noise.
+
+### Metapen M2
+For Metapen M2, while in 'normal' (no buttons pressed) position, this is a repeating pattern (every 6 rows it seems), again with some of the flipping encoding seen in `DftButton`. Could be that it's trying to convey something like a pen id? One of the patents describes something like that.
+
+
+### Slim Pen 2
+
+For Windows!
+
+For Slim Pen 2, we do not see an alternating bit pattern in 'normal', need to check if there's soome FSK going on though. When a button is pressed, almost all channels start flipping with each row.
+
+Interesting thing is that at the initial detection of the Slim Pen 2, we do see there's data encoded. This data appears to be identical between fresh pen detects.
+
+Perhaps there's some handshake happening at the start that contains the pen id? The first column of `DftButton` seems to go high at the end of the handshake, with one very weird row. The first 16 
+
+Looking at recordings from Linux, we do see that alternating pattern on the data lines here! (`semicircle.bin`).
+
+Ooh... insight! From DigiInfo (not in the xmls) I spotted;
+```
+  Transducer Serial:
+    0x97d8f7ad
+  Transducer Vendor:
+    0x0000045e (MS HID id)
+```
+
+That `0x97d8f7ad` id is the id that is sent by the windows driver to the screen! In the full irp log drivers we saw windows send data to the touch screen when the pen was used... So on Linux the pen and touch screen is operating in a different mode?
+
 
 ## IptsPenGeneral
 64 bytes

@@ -598,6 +598,7 @@ def iptsd_read(in_path):
     metadata = None
     if has_metadata:
         metadata, data = Metadata.pop(data)
+
     packets = []
     i = 0
     while (len(data) - i) >= device_info.buffer_size:

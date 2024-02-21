@@ -238,32 +238,36 @@ def run_plot_spectrogram(frames):
         return [math.log(x) if x != 0 else 0 for x in norm]
     rows = []
 
-    entries = 64 + 8
+    entries  = 0
+
+    windows_to_plot = set([
+        IptsDftWindowPosition,
+        IptsDftWindowPosition2,
+        IptsDftWindowButton,
+        IptsDftWindow0x0a,
+        IptsDftWindow0x08,
+    ])
+    window_sizes = {
+        IptsDftWindowPosition: 2 * 8,
+        IptsDftWindowPosition2: 2 * 10,
+        IptsDftWindowButton: 2 * 4,
+        IptsDftWindow0x0a: 2 * 16 * 2,
+        IptsDftWindow0x08: 2 * 10,
+    }
+
+    entries = 0
+    for t in windows_to_plot:
+        entries += window_sizes[t]
+
     for i, group in enumerate(grouped):
         window0a_counter = 0
         row = []
         for dft in group:
-            if type(dft) == IptsDftWindowPosition2:
-                pass
-            if type(dft) == IptsDftWindowButton:
-                for i in range(4):
+            if type(dft) in windows_to_plot:
+                for i in range(dft.header.num_rows):
                     row.extend(norms(dft.x[i]))
-                for i in range(4):
+                for i in range(dft.header.num_rows):
                     row.extend(norms(dft.y[i]))
-                pass
-            if type(dft) == IptsDftWindow0x0a and window0a_counter == 0:
-                for i in range(16):
-                    row.extend(norms(dft.x[i]))
-                for i in range(16):
-                    row.extend(norms(dft.y[i]))
-                pass
-                window0a_counter += 1
-            if type(dft) == IptsDftWindow0x0a and window0a_counter == 1:
-                for i in range(16):
-                    row.extend(norms(dft.x[i]))
-                for i in range(16):
-                    row.extend(norms(dft.y[i]))
-                window0a_counter += 1
         row.extend([0] * (entries * 9 - len(row)))
 
         row = logrow(row)
@@ -273,8 +277,8 @@ def run_plot_spectrogram(frames):
     import matplotlib.pyplot as plt
     import scipy.misc
     scipy.misc.imsave(args.spectrogram, rows)
-    plt.imshow(rows, origin='lower')
-    plt.show()
+    # plt.imshow(rows, origin='lower')
+    # plt.show()
 
 
 def row_mag(dft, i):
@@ -418,7 +422,7 @@ if __name__ == "__main__":
 
     plot_spectrogram_parser = subparsers.add_parser('plot_spectrogram')
     plot_spectrogram_parser.add_argument("input", help="The iptsd dump file to open")
-    plot_spectrogram_parser.add_argument("--spectrogram", help="Write histogram here", default="/tmp/spectrogram.png")
+    plot_spectrogram_parser.add_argument("spectrogram", help="Write histogram here", default="/tmp/spectrogram.png")
     plot_spectrogram_parser.set_defaults(func=run_plot_spectrogram)
 
     decode_button_parser = subparsers.add_parser('decode_button')

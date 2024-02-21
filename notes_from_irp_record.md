@@ -271,3 +271,5 @@ from irpmon, len < 20; len == 16;
 
 ```
 
+
+That `f7 d8 97 70` sent to the hardware is the transducer serial for my slim pen!
