@@ -450,7 +450,7 @@ class IptsTermination(IptsReport):
         assert(z._v == 0 or z._v == 0x30000 or z._v == 1)
         return IptsTermination()
 
-report_parsers = {
+report_lookup = {
     ReportType.IPTS_REPORT_TYPE_TIMESTAMP._value_:IptsTimestamp,
     ReportType.IPTS_REPORT_TYPE_DIMENSIONS._value_:IptsDimensions,
     ReportType.IPTS_REPORT_TYPE_HEATMAP._value_:IptsHeatmap,
@@ -474,7 +474,7 @@ report_parsers = {
 
 # Main function to actually interpret a report using the above data.
 def interpret_report(report_header, data):
-    p = report_parsers.get(report_header.type, IptsReport)
+    p = report_lookup.get(report_header.type, IptsReport)
     return p.parse(report_header, data)
 
 # Interpret a list of [(report_header, report_data), ...]
@@ -501,7 +501,7 @@ def extract_reports(frames, report_types, with_data=False):
     output = []
     for frame_header, reports in frames:
         for report_header, report_data in reports:
-            p = report_parsers.get(report_header.type, IptsReport)
+            p = report_lookup.get(report_header.type, IptsReport)
             if p is IptsDftWindow:
                 p = IptsDftWindow.dft_type(report_header, report_data)
             if p in report_types:
