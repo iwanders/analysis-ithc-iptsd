@@ -88,7 +88,8 @@ def run_print_report_types(args):
                 dft_type = IptsDftWindow.dft_type(report_header, report_data).__name__
             if frame_name:
                 frame_name = frame_name.__name__
-            print(f"   0x{report_header.type:0>2x} {frame_name}  len: {report_header.size}  {dft_type}")
+            print(f"   0x{report_header.type:0>2x} {frame_name}  len: {report_header.size} {dft_type}")
+            # print(f"{hexify(bytes(report_data[0:32]))} ")
             
 
 def run_print_grouped(args):

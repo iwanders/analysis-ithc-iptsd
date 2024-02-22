@@ -551,10 +551,27 @@ class HIDReportFrame(Base):
                 ("outer_size", ctypes.c_uint32),
                 ("_pad2", ctypes.c_uint8 * 15),
                ]
+# 6e ad f7 d8 97 00 00 00 00 00 00 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00
+class HIDReportFrame0x6e(Base): # CANNOT SUBCLASS FROM HIDReportFrame, size changes!
+    _fields_ = [("type", ctypes.c_uint8),
+                ("digitizer", ctypes.c_uint32),
+                ("_pad6", ctypes.c_uint8 * 6),
+                ("_07", ctypes.c_uint32),
+                ("_0xff", ctypes.c_uint8),
+                ("_pad2", ctypes.c_uint8 * 2),
+                ("something", ctypes.c_uint16),
+                ("_pad3", ctypes.c_uint8 * 9),
+               ]
+    # Size doesn't actually be in this entry!? Should it just parse frames to
+    # determine length? :/
+    size = 1348
+assert(ctypes.sizeof(HIDReportFrame0x6e) == 29)
 
 def parse_hid_report(data):
     irp_header, remainder, discard = HIDReportFrame.pop_size(data)
-    # print(discard)
+    if irp_header.type == 0x6e:
+        # This is one special snowflake...
+        irp_header, remainder, discard = HIDReportFrame0x6e.pop_size(data)
     reports = []
     while remainder:
         report_header, data, remainder = ipts_report_header.pop_size(remainder)

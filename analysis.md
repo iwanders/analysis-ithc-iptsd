@@ -104,7 +104,21 @@ Compare that to:
 0x0d size:  1982 hexdump: 0d 00 00 be 07 00 00 00 00 00 b7 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
 ```
 
-Where the size is in the spot where the current digitizer ID is located, so... `0x6e` has a special header, because `38872` as size doesn't appear to be right.
+Where the size is in the spot where the current digitizer ID is located, so...
+The `0x6e` frame has a special header, because `38872` as size doesn't appear to be right; the reports until `0xff` don't add up.
+
+```
+0x6e size: 1348 hexdump: 6e ad f7 d8 97 00 00 00 00 00 00 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
+   0x5f IptsPenMetadata  len: 16 
+   0x80   len: 100 
+   0x59 IptsNoiseMetricsOutput  len: 64 
+   0x5a IptsDataSelection  len: 148 
+   0x5c IptsDftWindow  len: 972 IptsDftWindowPosition2
+   0x62 IptsPenDetection  len: 16 
+   0xff IptsTermination  len: 4 
+0x0d size: 1982 hexdump: 0d 00 00 be 07 00 00 00 00 00 b7 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
+```
+The `0x6e` frame seems to take the position of the `0x1a` frame.
 
 
 In linux-surface iptsd;
