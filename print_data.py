@@ -271,6 +271,7 @@ def run_plot_spectrogram(frames):
         IptsDftWindowButton,
         IptsDftWindow0x0a,
         IptsDftWindowPosition,
+        IptsDftWindowPressure,
         IptsDftWindowPosition2,
         IptsDftWindow0x08,
     ]
@@ -282,6 +283,7 @@ def run_plot_spectrogram(frames):
         IptsDftWindowButton: 2 * 4,
         IptsDftWindow0x0a: 2 * 16 * 2,
         IptsDftWindow0x08: 2 * 10,
+        IptsDftWindowPressure: 2 * 16,
     }
     accumulated_window_pos = { }
     for w in plot_order:

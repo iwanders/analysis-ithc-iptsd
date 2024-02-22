@@ -224,6 +224,10 @@ Request to the hardware to let the stylus know it is still being tracked and it 
 
 It appears to show a pattern similar to the one seen for the Metapen M2 on windows. It is possible that it falls back to MPP 2.0 functionality in the linux case? Does this, combined with this screen cause the wavy positions?
 
+## IptsDftWindowPressure
+
+This isn't only pressure? Looks to be some binary code in there as well for M2 and SP2?
+
 ## IptsPenGeneral
 64 bytes
 ```
