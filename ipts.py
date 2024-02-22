@@ -361,8 +361,12 @@ class IptsDftWindow(IptsReport):
         for i in range(header.num_rows):
             row, data = ipts_pen_dft_window_row.pop(data)
             ys.append(row)
-        
-        use_type = dft_lookup.get(header.data_type, IptsDftWindow)
+
+        # Deliberately changed this to None, to avoid a fallback.
+        # Failing hard is good here, we don't want to miss data.
+        use_type = dft_lookup.get(header.data_type, None)
+        if use_type is None:
+            raise BaseException(f"New unknown dft type! 0x{header.data_type:0>2x} decimal: {header.data_type}");
 
         return use_type(header=header, x=xs, y=ys)
 
