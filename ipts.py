@@ -515,6 +515,9 @@ def extract_reports(frames, report_types, with_data=False):
                     parsed._original_header = report_header
                     parsed._original_data = report_data
                 output.append(parsed)
+            # Bad hack here to allow a white line.
+            #if HIDReportFrame0x6e in report_types and type(report_header) == HIDReportFrame0x6e:
+            #    output.append(report_data)
     return output
 
 # Clunky helper to group unique report types into dictionaries.
@@ -569,10 +572,12 @@ assert(ctypes.sizeof(HIDReportFrame0x6e) == 29)
 
 def parse_hid_report(data):
     irp_header, remainder, discard = HIDReportFrame.pop_size(data)
+    reports = []
     if irp_header.type == 0x6e:
         # This is one special snowflake...
         irp_header, remainder, discard = HIDReportFrame0x6e.pop_size(data)
-    reports = []
+        #reports.append((irp_header, irp_header)) # Terrible hack!
+
     while remainder:
         report_header, data, remainder = ipts_report_header.pop_size(remainder)
         if report_header.type == 0xff: # seems to be termination

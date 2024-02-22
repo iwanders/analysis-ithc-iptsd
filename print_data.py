@@ -252,8 +252,8 @@ def run_plot_spectrogram(frames):
 
     import matplotlib.pyplot as plt
 
-    def norms(r):
-        return [math.sqrt((r.imag[i]**2 + r.real[i]**2)) for i in range(9)]
+    def norms(r, s=10):
+        return [math.sqrt((r.imag[i]**2 + r.real[i]**2)) * s for i in range(9)]
 
     def logrow(norm):
         return [math.log(x) if x != 0 else 0 for x in norm]
