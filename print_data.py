@@ -253,12 +253,16 @@ def run_plot_spectrogram(frames):
     import matplotlib.pyplot as plt
 
     N = IPTS_DFT_NUM_COMPONENTS
-    def norms(r, s=10):
-        mags = [math.sqrt((r.imag[i]**2 + r.real[i]**2)) * s for i in range(N)]
-        return [(a, a, a) for a in mags]
+    def norms(r):
+        mags = [math.sqrt((r.imag[i]**2 + r.real[i]**2))  for i in range(N)]
+        return [[a, a, a] for a in mags]
 
-    def logrow(norm):
-        return [tuple(math.log(x) if x != 0 else 0 for x in p) for p in norm]
+    def phase_calc(r):
+        wrapped = [math.atan2(r.imag[i], r.real[i]) for i in range(N)]
+        return [a + math.pi * 2 if a < 0 else a for a in wrapped]
+
+    def logrow(norm, s=args.scale):
+        return [list(math.log(x* s ) if x != 0 else 0 for x in p) for p in norm]
     rows = []
 
     entries  = 0
@@ -295,7 +299,9 @@ def run_plot_spectrogram(frames):
     for i, group in enumerate(grouped):
         window0a_counter = 0
         row = []
+        phases = []
         row.extend([[0, 0, 0]] * (entries * N))
+        phases.extend([0] * (entries * N))
         for dft in group:
             if type(dft) in windows_to_plot:
                 start = accumulated_window_pos[type(dft)]
@@ -304,14 +310,27 @@ def run_plot_spectrogram(frames):
                 for i in range(dft.header.num_rows):
                     window = norms(dft.x[i])
                     row[start + i * N:start + (i + 1) * N] = window
+                    if args.color_phase:
+                        windowp = phase_calc(dft.x[i])
+                        phases[start + i * N:start + (i + 1) * N] = windowp
                 start += dft.header.num_rows * N
                 for i in range(dft.header.num_rows):
                     window = norms(dft.y[i])
                     row[start + i * N:start + (i + 1) * N] = window
+                    if args.color_phase:
+                        windowp = phase_calc(dft.x[i])
+                        phases[start + i * N:start + (i + 1) * N] = windowp
             if type(dft) == IptsDftWindow0x0a:
                 window0a_counter += 1
         if args.logarithm:
             row = logrow(row)
+        if args.color_phase:
+            for mags, phase_row in zip(row, phases):
+                mags[2] = 0
+                
+                r = phase_row / (math.pi * 2)
+                mags[0] *= r
+                mags[1] *= (1-r)
         rows.append(row)
 
     import matplotlib.pyplot as plt
@@ -468,6 +487,8 @@ if __name__ == "__main__":
     plot_spectrogram_parser.add_argument("input", help="The iptsd dump file to open")
     plot_spectrogram_parser.add_argument("spectrogram", help="Write histogram here", default="/tmp/spectrogram.png")
     plot_spectrogram_parser.add_argument("--no-logarithm", dest="logarithm", default=True, action="store_false", help="Whether or not to take the logarithm of the norm.")
+    plot_spectrogram_parser.add_argument("--color-phase", default=False, action="store_true", help="Whether to color by phase.")
+    plot_spectrogram_parser.add_argument("--scale", default=1.0, type=float, help="Multiply values by this before taking the log.")
     plot_spectrogram_parser.set_defaults(func=run_plot_spectrogram)
 
     decode_button_parser = subparsers.add_parser('decode_button')
