@@ -123,19 +123,6 @@ Adding special handling in the parsing for `0x6e`, we obtain the following frame
 The `0x6e` frame sits between the `0x1a` frame and the `0x0d` frame.
 
 
-In linux-surface iptsd;
-```
-struct [[gnu::packed]] ipts_hid_frame {
-	u32 size;
-	u8 reserved1;
-	u8 type;
-	u8 reserved2;
-};
-```
-
-Doesn't actually get us the 
-
-
 ## DftButton
 
 Currently the first row of this DFT frame is used to determine the button state, by combining it with the phase of the position.
@@ -144,7 +131,7 @@ I don't think this is the button in the first column, it does transfer binary da
 
 ![2024_02_19_dft_button_histogram](media/2024_02_19_dft_button_histogram.png)
 
-- Row 0: unknown
+- Row 0: unknown, may be button for MPP 1.51, seems to be the case for M1.
 - Row 1: Sync marker?
 - Row 2/3: One of these is high to represent bit state?
 
@@ -187,7 +174,12 @@ For the metapen m1, we do see that the first column matches the button signal.
 For the Slim Pen 2 and Metapen M2 however, the first column does change in strength,
 main thing seen however is that we see the 'data' dft's go alternating.
 
+Speculation...
+- Battery level?
+- Digitizer id?
+- Serial number?
 
+We've got pretty much nothing to go on for this one though.
 
 ## IptsDftWindow0x0a
 
@@ -198,9 +190,8 @@ For Metapen M1, this is always noise.
 For Metapen M2, while in 'normal' (no buttons pressed) position, this is a repeating pattern (every 6 rows it seems), again with some of the flipping encoding seen in `DftButton`. Could be that it's trying to convey something like a pen id? One of the patents describes something like that.
 
 
-### Slim Pen 2
+### Slim Pen 2 Windows
 
-For Windows!
 
 For Slim Pen 2, we do not see an alternating bit pattern in 'normal', need to check if there's soome FSK going on though. When a button is pressed, almost all channels start flipping with each row.
 
@@ -220,6 +211,18 @@ Ooh... insight! From DigiInfo (not in the xmls) I spotted;
 
 That `0x97d8f7ad` id is the id that is sent by the windows driver to the screen! In the full irp log drivers we saw windows send data to the touch screen when the pen was used... So on Linux the pen and touch screen is operating in a different mode?
 
+Found the digitizer ID in the windows irp logs. It's in a special frame. It is likely decoded by the touch screen? We do see the repeating pattern on `0x0a` when the pen is first brought close.
+
+Current speculation, needs checking is that the windows driver begins sending that 
+```
+09 8e a5 15 02 00 00 00 00 ad f7 d8 97 70 17 00
+```
+
+Request to the hardware to let the stylus know it is still being tracked and it doesn't have to send its 'init' transmission again.
+
+### Slim Pen 2 Linux
+
+It appears to show a pattern similar to the one seen for the Metapen M2 on windows. It is possible that it falls back to MPP 2.0 functionality in the linux case? Does this, combined with this screen cause the wavy positions?
 
 ## IptsPenGeneral
 64 bytes
