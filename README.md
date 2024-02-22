@@ -49,3 +49,8 @@ Current understanding;
 - Well, or so I thought, diagonal recording on windows; `2024_02_04_intelthcbase_bootlog_diagonal_wiggle_linux` also makse for wriggly lines.
 - Metapen M1, without tilt doesn't have any of the wiggling issues, but the three with tilt do.
 - For barrel button, seems when button depressed only has row 0's at high magnitude, rest at zero. While not pressed 2 or 3 are high. But this results in too many buttons pressed.
+
+
+# Other data dumps
+
+Should probably figure out how to load the dumps from [here](https://github.com/quo/iptsd/issues/5#issuecomment-1193124454), to compare against Slim Pen 1, but the `DeviceInfo` in that reports a `buffer_size` of `18374686479679160320`, format probably changed?

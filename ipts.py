@@ -348,7 +348,7 @@ class IptsMagnitude(IptsReport):
         # assert(v._mid2 == 0)
         return IptsMagnitude(x1=v.x1, x2=v.x2, y1=v.y1, y2=v.y2, x=v.x, y=v.y)
 
-_dft_types = {}
+dft_lookup = {}
 class IptsDftWindow(IptsReport):
     @staticmethod
     def parse(header, data):
@@ -362,14 +362,14 @@ class IptsDftWindow(IptsReport):
             row, data = ipts_pen_dft_window_row.pop(data)
             ys.append(row)
         
-        use_type = _dft_types.get(header.data_type, IptsDftWindow)
+        use_type = dft_lookup.get(header.data_type, IptsDftWindow)
 
         return use_type(header=header, x=xs, y=ys)
 
     @staticmethod
     def dft_type(header, data):
         header = ipts_pen_dft_window.read(data)
-        return _dft_types.get(header.data_type, IptsDftWindow)
+        return dft_lookup.get(header.data_type, IptsDftWindow)
         
 
 class IptsDftWindowPressure(IptsDftWindow):
@@ -385,7 +385,7 @@ class IptsDftWindow0x08(IptsDftWindow):
 class IptsDftWindow0x0a(IptsDftWindow):
     pass
 
-_dft_types.update({
+dft_lookup.update({
     DftType.IPTS_DFT_ID_POSITION._value_: IptsDftWindowPosition,
     DftType.IPTS_DFT_ID_POSITION2._value_: IptsDftWindowPosition2,
     DftType.IPTS_DFT_ID_BUTTON._value_: IptsDftWindowButton,

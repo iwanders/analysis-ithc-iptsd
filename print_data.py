@@ -7,7 +7,7 @@ import sys
 import json
 
 from ipts import iptsd_read, extract_reports, chunk_reports, report_lookup
-from ipts import IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a, IPTS_DFT_NUM_COMPONENTS
+from ipts import IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a, IPTS_DFT_NUM_COMPONENTS, IptsDftWindow
 from digi_info import load_digiinfo_xml
 MID = int(IPTS_DFT_NUM_COMPONENTS / 2)
 
@@ -79,11 +79,16 @@ def run_print_report_types(args):
     z = iptsd_read(args.input)
     for frame_header, reports in z:
         frame_type = frame_header.type
-        print(f"0x{frame_type:0>2x}  {hexify(bytes(frame_header))}")
+        print(f"0x{frame_type:0>2x} size: {frame_header.size} hexdump: {hexify(bytes(frame_header))}")
         for report_header, report_data in reports:
             # print(report_data)
             frame_name = report_lookup.get(report_header.type, "")
-            print(f"   0x{report_header.type:0>2x} {frame_name}  len: {report_header.size}")
+            dft_type = ""
+            if type(frame_name) != str and isinstance(frame_name(), IptsDftWindow):
+                dft_type = IptsDftWindow.dft_type(report_header, report_data).__name__
+            if frame_name:
+                frame_name = frame_name.__name__
+            print(f"   0x{report_header.type:0>2x} {frame_name}  len: {report_header.size}  {dft_type}")
             
 
 def run_print_grouped(args):

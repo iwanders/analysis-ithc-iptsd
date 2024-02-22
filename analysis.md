@@ -1,70 +1,75 @@
 # General
 
-Should probably figure out how to load the dumps from [here](https://github.com/quo/iptsd/issues/5#issuecomment-1193124454), to compare against Slim Pen 1, but the `DeviceInfo` in that reports a `buffer_size` of `18374686479679160320`, format probably changed?
+I obtained a few pens:
 
-- Slim Pen 2 is MPP v2.6
-- Metapen M1 is MPP 1.51
-- Metapen M2 is MPP 2.0
-
-
-# Breakdown of messages from windows
-
-First byte of messages coming from the driver.
-
-The multiple records on `0x1a` is not a bug in the parser, data actually contains this, and it appears to be unique.
+- [Microsoft Surface Slim Pen 2](https://www.microsoft.com/en-ca/d/surface-slim-pen-2/8tb9xw8rwc14) (SP2) is MPP v2.6, my pen digitizer ID is `0x97d8f7ad`.
+- [Metapen M1](https://metapen.com/products/m1) (M1) is MPP 1.51
+- [Metapen M2](https://metapen.com/products/m2) (M2) is MPP 2.0
 
 
-This pattern, and the sizes of individual packets are identical between Slim Pen2, Metapen M1, Metapen M2.
+# Breakdown of messages captured from Windows
+
+First byte seems to denote the frame type, not yet sure how this is parsed on the iptsd side.
+
+The multiple records on the `0x1a` frame is not a bug in the parser, data actually contains this, and it appears to be unique.
+
+This pattern, and the sizes of individual packets are identical between Slim Pen2, Metapen M1, Metapen M2. Strike that, Slim Pen 2 has `0x6e` as unique frame type.
 
 ```
-0x1a: {'type': 26, 'unknown': 0, 'size': 4318, 'outer_size': 4311}
-    IptsPenMetadata  0x5f, {'type': 95, 'flags': 0, 'size': 16}
-    IptsNoiseMetricsOutput  0x59, {'type': 89, 'flags': 0, 'size': 64}
-    IptsDataSelection  0x5a, {'type': 90, 'flags': 0, 'size': 148}
-    IptsDftWindowButton  0x5c, {'type': 92, 'flags': 0, 'size': 396}
-    IptsPenDetection  0x62, {'type': 98, 'flags': 0, 'size': 16}
-    IptsPenMetadata  0x5f, {'type': 95, 'flags': 0, 'size': 16}
-    IptsNoiseMetricsOutput  0x59, {'type': 89, 'flags': 0, 'size': 64}
-    IptsDataSelection  0x5a, {'type': 90, 'flags': 0, 'size': 148}
-    IptsDftWindow  0x5c, {'type': 92, 'flags': 0, 'size': 1548}, dft data type: 0x0a
-    IptsPenDetection  0x62, {'type': 98, 'flags': 0, 'size': 16}
-    IptsPenMetadata  0x5f, {'type': 95, 'flags': 0, 'size': 16}
-    IptsNoiseMetricsOutput  0x59, {'type': 89, 'flags': 0, 'size': 64}
-    IptsDataSelection  0x5a, {'type': 90, 'flags': 0, 'size': 148}
-    IptsDftWindow  0x5c, {'type': 92, 'flags': 0, 'size': 1548}, dft data type: 0x0a
-    IptsPenDetection  0x62, {'type': 98, 'flags': 0, 'size': 16}
-0x0d: {'type': 13, 'unknown': 0, 'size': 1982, 'outer_size': 1975}
-    IptsPenMetadata  0x5f, {'type': 95, 'flags': 0, 'size': 16}
-    IptsReport  0x80, {'type': 128, 'flags': 0, 'size': 100}
-    IptsNoiseMetricsOutput  0x59, {'type': 89, 'flags': 0, 'size': 64}
-    IptsDataSelection  0x5a, {'type': 90, 'flags': 0, 'size': 148}
-    IptsTouchedAntennas  0x5e, {'type': 94, 'flags': 0, 'size': 28}
-    IptsDftWindowPressure  0x5c, {'type': 92, 'flags': 0, 'size': 1548}
-    IptsPenDetection  0x62, {'type': 98, 'flags': 0, 'size': 16}
-0x0b: {'type': 11, 'unknown': 0, 'size': 1374, 'outer_size': 1367}
-    IptsPenMetadata  0x5f, {'type': 95, 'flags': 0, 'size': 16}
-    IptsReport  0x80, {'type': 128, 'flags': 0, 'size': 100}
-    IptsNoiseMetricsOutput  0x59, {'type': 89, 'flags': 0, 'size': 64}
-    IptsDataSelection  0x5a, {'type': 90, 'flags': 0, 'size': 148}
-    IptsDftWindow  0x5c, {'type': 92, 'flags': 0, 'size': 972}, dft data type: 0x08
-    IptsPenDetection  0x62, {'type': 98, 'flags': 0, 'size': 16}
-0x0c: {'type': 12, 'unknown': 0, 'size': 1750, 'outer_size': 1743}
-    IptsPenMetadata  0x5f, {'type': 95, 'flags': 0, 'size': 16}
-    IptsPenGeneral  0x57, {'type': 87, 'flags': 0, 'size': 64}
-    IptsReport  0x80, {'type': 128, 'flags': 0, 'size': 100}
-    IptsNoiseMetricsOutput  0x59, {'type': 89, 'flags': 0, 'size': 64}
-    IptsDataSelection  0x5a, {'type': 90, 'flags': 0, 'size': 148}
-    IptsMagnitude  0x5b, {'type': 91, 'flags': 0, 'size': 464}
-    IptsTouchedAntennas  0x5e, {'type': 94, 'flags': 0, 'size': 28}
-    IptsDftWindowPosition  0x5c, {'type': 92, 'flags': 0, 'size': 780}
-    IptsPenDetection  0x62, {'type': 98, 'flags': 0, 'size': 16}
-0x0b: {'type': 11, 'unknown': 0, 'size': 1374, 'outer_size': 1367}
-    IptsPenMetadata  0x5f, {'type': 95, 'flags': 0, 'size': 16}
-    IptsReport  0x80, {'type': 128, 'flags': 0, 'size': 100}
-    IptsNoiseMetricsOutput  0x59, {'type': 89, 'flags': 0, 'size': 64}
-    IptsDataSelection  0x5a, {'type': 90, 'flags': 0, 'size': 148}
-    IptsDftWindowPosition2  0x5c, {'type': 92, 'flags': 0, 'size': 972}
-    IptsPenDetection  0x62, {'type': 98, 'flags': 0, 'size': 16}
+0x1a size: 4318 hexdump: 1a 00 00 de 10 00 00 00 00 00 d7 10 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
+   0x5f IptsPenMetadata  len: 16  
+   0x59 IptsNoiseMetricsOutput  len: 64  
+   0x5a IptsDataSelection  len: 148  
+   0x5c IptsDftWindow  len: 396  IptsDftWindowButton
+   0x62 IptsPenDetection  len: 16  
+   0x5f IptsPenMetadata  len: 16  
+   0x59 IptsNoiseMetricsOutput  len: 64  
+   0x5a IptsDataSelection  len: 148  
+   0x5c IptsDftWindow  len: 1548  IptsDftWindow0x0a
+   0x62 IptsPenDetection  len: 16  
+   0x5f IptsPenMetadata  len: 16  
+   0x59 IptsNoiseMetricsOutput  len: 64  
+   0x5a IptsDataSelection  len: 148  
+   0x5c IptsDftWindow  len: 1548  IptsDftWindow0x0a
+   0x62 IptsPenDetection  len: 16  
+   0xff IptsTermination  len: 4  
+0x0d size: 1982 hexdump: 0d 00 00 be 07 00 00 00 00 00 b7 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
+   0x5f IptsPenMetadata  len: 16  
+   0x80   len: 100  
+   0x59 IptsNoiseMetricsOutput  len: 64  
+   0x5a IptsDataSelection  len: 148  
+   0x5e IptsTouchedAntennas  len: 28  
+   0x5c IptsDftWindow  len: 1548  IptsDftWindowPressure
+   0x62 IptsPenDetection  len: 16  
+   0xff IptsTermination  len: 4  
+0x0b size: 1374 hexdump: 0b 00 00 5e 05 00 00 00 00 00 57 05 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
+   0x5f IptsPenMetadata  len: 16  
+   0x80   len: 100  
+   0x59 IptsNoiseMetricsOutput  len: 64  
+   0x5a IptsDataSelection  len: 148  
+   0x5c IptsDftWindow  len: 972  IptsDftWindow0x08
+   0x62 IptsPenDetection  len: 16  
+   0xff IptsTermination  len: 4  
+0x0c size: 1750 hexdump: 0c 00 00 d6 06 00 00 00 00 00 cf 06 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
+   0x5f IptsPenMetadata  len: 16  
+   0x57 IptsPenGeneral  len: 64  
+   0x80   len: 100  
+   0x59 IptsNoiseMetricsOutput  len: 64  
+   0x5a IptsDataSelection  len: 148  
+   0x5b IptsMagnitude  len: 464  
+   0x5e IptsTouchedAntennas  len: 28  
+   0x5c IptsDftWindow  len: 780  IptsDftWindowPosition
+   0x62 IptsPenDetection  len: 16  
+   0xff IptsTermination  len: 4  
+0x0b size: 1374 hexdump: 0b 00 00 5e 05 00 00 00 00 00 57 05 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
+   0x5f IptsPenMetadata  len: 16  
+   0x80   len: 100  
+   0x59 IptsNoiseMetricsOutput  len: 64  
+   0x5a IptsDataSelection  len: 148  
+   0x5c IptsDftWindow  len: 972  IptsDftWindowPosition2
+   0x62 IptsPenDetection  len: 16  
+   0xff IptsTermination  len: 4  
+
 ```
 
 - DataSelection is always before a DFT window.
@@ -86,6 +91,33 @@ In `0x1a`, the magnitude field still matches the center most coefficients, but t
 - The frequencies never change in the `0x1a` frame.
 - When hovering, button goes to zeros. `0x0a` goes to only having rows `2,3`, `6,7`, `10,11`, `14,15`
 - Rows are consistent, that is; the entire row seems to represent the same data.
+
+## The 0x6e frame
+Another revelation, my digitizer ID shows up in a `0x6e` HID frame, which seems to have a different header format;
+
+```
+0x6e size: 38872 hexdump: 6e ad f7 d8 97 00 00 00 00 00 00 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
+```
+
+Compare that to:
+```
+0x0d size:  1982 hexdump: 0d 00 00 be 07 00 00 00 00 00 b7 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
+```
+
+Where the size is in the spot where the current digitizer ID is located, so... `0x6e` has a special header, because `38872` as size doesn't appear to be right.
+
+
+In linux-surface iptsd;
+```
+struct [[gnu::packed]] ipts_hid_frame {
+	u32 size;
+	u8 reserved1;
+	u8 type;
+	u8 reserved2;
+};
+```
+
+Doesn't actually get us the 
 
 
 ## DftButton
