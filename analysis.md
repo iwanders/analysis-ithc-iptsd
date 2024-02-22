@@ -107,6 +107,8 @@ Compare that to:
 Where the size is in the spot where the current digitizer ID is located, so...
 The `0x6e` frame has a special header, because `38872` as size doesn't appear to be right; the reports until `0xff` don't add up.
 
+Adding special handling in the parsing for `0x6e`, we obtain the following frame, with the size manually set to `1348`:
+
 ```
 0x6e size: 1348 hexdump: 6e ad f7 d8 97 00 00 00 00 00 00 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
    0x5f IptsPenMetadata  len: 16 
@@ -118,7 +120,7 @@ The `0x6e` frame has a special header, because `38872` as size doesn't appear to
    0xff IptsTermination  len: 4 
 0x0d size: 1982 hexdump: 0d 00 00 be 07 00 00 00 00 00 b7 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
 ```
-The `0x6e` frame seems to take the position of the `0x1a` frame.
+The `0x6e` frame sits between the `0x1a` frame and the `0x0d` frame.
 
 
 In linux-surface iptsd;
