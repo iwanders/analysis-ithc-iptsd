@@ -252,8 +252,9 @@ def run_plot_spectrogram(frames):
 
     import matplotlib.pyplot as plt
 
+    N = IPTS_DFT_NUM_COMPONENTS
     def norms(r, s=10):
-        return [math.sqrt((r.imag[i]**2 + r.real[i]**2)) * s for i in range(9)]
+        return [math.sqrt((r.imag[i]**2 + r.real[i]**2)) * s for i in range(N)]
 
     def logrow(norm):
         return [math.log(x) if x != 0 else 0 for x in norm]
@@ -261,13 +262,15 @@ def run_plot_spectrogram(frames):
 
     entries  = 0
 
-    windows_to_plot = set([
-        IptsDftWindowPosition,
-        IptsDftWindowPosition2,
+    plot_order = [
         IptsDftWindowButton,
         IptsDftWindow0x0a,
+        IptsDftWindowPosition,
+        IptsDftWindowPosition2,
         IptsDftWindow0x08,
-    ])
+    ]
+
+    windows_to_plot = set(plot_order)
     window_sizes = {
         IptsDftWindowPosition: 2 * 8,
         IptsDftWindowPosition2: 2 * 10,
@@ -275,6 +278,14 @@ def run_plot_spectrogram(frames):
         IptsDftWindow0x0a: 2 * 16 * 2,
         IptsDftWindow0x08: 2 * 10,
     }
+    accumulated_window_pos = { }
+    for w in plot_order:
+        pos = 0
+        for x in plot_order:
+            if w == x:
+                accumulated_window_pos[w] = pos * N
+                break;
+            pos += window_sizes[x]
 
     entries = 0
     for t in windows_to_plot:
@@ -283,16 +294,22 @@ def run_plot_spectrogram(frames):
     for i, group in enumerate(grouped):
         window0a_counter = 0
         row = []
+        row.extend([0] * (entries * N))
         for dft in group:
             if type(dft) in windows_to_plot:
+                start = accumulated_window_pos[type(dft)]
+                if window0a_counter == 1:
+                    start += 2 * 16 * N
                 for i in range(dft.header.num_rows):
-                    row.extend(norms(dft.x[i]))
+                    window = norms(dft.x[i])
+                    row[start + i * N:start + (i + 1) * N] = window
+                start += dft.header.num_rows * N
                 for i in range(dft.header.num_rows):
-                    row.extend(norms(dft.y[i]))
-        row.extend([0] * (entries * 9 - len(row)))
-
+                    window = norms(dft.y[i])
+                    row[start + i * N:start + (i + 1) * N] = window
+            if type(dft) == IptsDftWindow0x0a:
+                window0a_counter += 1
         row = logrow(row)
-
         rows.append(row)
 
     import matplotlib.pyplot as plt
