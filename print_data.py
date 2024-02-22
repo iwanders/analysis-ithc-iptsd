@@ -241,7 +241,23 @@ def run_plot_iq(frames):
     plt.legend()
     plt.show()
 
+def color_map(r):
+    # color map that goes from green to red back to green for ratio [0.0, 1.0]
+    mags = [1.0, 1.0, 1.0]
+    if r <= 0.5:
+        mags[0] = r*2
+        mags[1] = 1-r*2
+        mags[2] = 0
+    else:
+        mags[0] = 1-(r - 0.5)*2
+        mags[1] = (r - 0.5)*2
+        mags[2] = 0
+    return mags
 
+assert(color_map(0.0) == [0, 1.0, 0])
+assert(color_map(0.5) == [1.0, 0.0, 0])
+assert(color_map(0.0) == color_map(1.0))
+    
 
 
 
@@ -328,11 +344,13 @@ def run_plot_spectrogram(frames):
             row = logrow(row)
         if args.color_phase:
             for mags, phase_row in zip(row, phases):
-                mags[2] = 0
                 
-                r = phase_row / (math.pi * 2)
+                ratio = phase_row / (math.pi * 2)
+                r, g, b = color_map(ratio)
                 mags[0] *= r
-                mags[1] *= (1-r)
+                mags[1] *= g
+                mags[2] *= b
+                    
         rows.append(row)
 
     import matplotlib.pyplot as plt
