@@ -254,10 +254,11 @@ def run_plot_spectrogram(frames):
 
     N = IPTS_DFT_NUM_COMPONENTS
     def norms(r, s=10):
-        return [math.sqrt((r.imag[i]**2 + r.real[i]**2)) * s for i in range(N)]
+        mags = [math.sqrt((r.imag[i]**2 + r.real[i]**2)) * s for i in range(N)]
+        return [(a, a, a) for a in mags]
 
     def logrow(norm):
-        return [math.log(x) if x != 0 else 0 for x in norm]
+        return [tuple(math.log(x) if x != 0 else 0 for x in p) for p in norm]
     rows = []
 
     entries  = 0
@@ -294,7 +295,7 @@ def run_plot_spectrogram(frames):
     for i, group in enumerate(grouped):
         window0a_counter = 0
         row = []
-        row.extend([0] * (entries * N))
+        row.extend([[0, 0, 0]] * (entries * N))
         for dft in group:
             if type(dft) in windows_to_plot:
                 start = accumulated_window_pos[type(dft)]
@@ -309,7 +310,8 @@ def run_plot_spectrogram(frames):
                     row[start + i * N:start + (i + 1) * N] = window
             if type(dft) == IptsDftWindow0x0a:
                 window0a_counter += 1
-        row = logrow(row)
+        if args.logarithm:
+            row = logrow(row)
         rows.append(row)
 
     import matplotlib.pyplot as plt
@@ -465,6 +467,7 @@ if __name__ == "__main__":
     plot_spectrogram_parser = subparsers.add_parser('plot_spectrogram')
     plot_spectrogram_parser.add_argument("input", help="The iptsd dump file to open")
     plot_spectrogram_parser.add_argument("spectrogram", help="Write histogram here", default="/tmp/spectrogram.png")
+    plot_spectrogram_parser.add_argument("--no-logarithm", dest="logarithm", default=True, action="store_false", help="Whether or not to take the logarithm of the norm.")
     plot_spectrogram_parser.set_defaults(func=run_plot_spectrogram)
 
     decode_button_parser = subparsers.add_parser('decode_button')
