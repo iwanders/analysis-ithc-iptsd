@@ -28,6 +28,11 @@ def bool_octet_to_byte(z):
     for i, v in enumerate(z):
         a |= (1 << 7 - i) if v else 0
     return a
+def bool_list_to_byte(z):
+    a = 0
+    for i, v in enumerate(z):
+        a |= (1 << (len(z) - 1) - i) if v else 0
+    return a
 
 def byte_to_bool_octet(z):
     a = []
@@ -474,6 +479,45 @@ def run_decode_button(args):
 
     print("Combined: ", hexify(everything))
 
+
+def run_decode_pressure_digital(args):
+    grouped = load_relevant(args.input)
+    def get_pressure(group):
+        for dft in group:
+            if type(dft) == IptsDftWindowPressure:
+                return dft
+
+    transmissions = []
+    current = []
+    coords = []
+    for i, group in enumerate(grouped):
+        button = get_pressure(group)
+        if not button:
+            continue
+        # print_dft(button)
+
+        # collapse the dimensions, just obtain the magnitude.
+        dims = dimension_mag(button)
+        digital_active = dims[6]
+        digital = [dims[i] > digital_active for i in range(7, button.header.num_rows)]
+        print(digital)
+        # Check if it is a parity
+        # ones = digital[0:8].count(True)
+        # Doesn't seem to be parity... :(
+        # digital.reverse()
+        v = bool_list_to_byte(digital)
+        print("".join("1" if x else "0" for x in digital))
+        p = (i, v)
+        print(p)
+        coords.append(p)
+
+
+    print('{' + ",".join(f"({i}, {v})" for i,v in coords) + "}")
+    
+    import matplotlib.pyplot as plt
+    plt.plot([a[0] for a in coords], [a[1] for a in coords])
+    plt.show()
+        
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
@@ -514,6 +558,10 @@ if __name__ == "__main__":
     decode_button_parser = subparsers.add_parser('decode_button')
     decode_button_parser.add_argument("input", help="The iptsd dump file to open")
     decode_button_parser.set_defaults(func=run_decode_button)
+
+    decode_pressure_digital_parser = subparsers.add_parser('decode_pressure_digital')
+    decode_pressure_digital_parser.add_argument("input", help="The iptsd dump file to open")
+    decode_pressure_digital_parser.set_defaults(func=run_decode_pressure_digital)
 
     args = parser.parse_args()
     if (args.command is None):

@@ -2,9 +2,9 @@
 
 I obtained a few pens:
 
-- [Microsoft Surface Slim Pen 2](https://www.microsoft.com/en-ca/d/surface-slim-pen-2/8tb9xw8rwc14) (SP2) is MPP v2.6, my pen digitizer ID is `0x97d8f7ad`.
-- [Metapen M1](https://metapen.com/products/m1) (M1) is MPP 1.51
-- [Metapen M2](https://metapen.com/products/m2) (M2) is MPP 2.0
+- [Microsoft Surface Slim Pen 2](https://www.microsoft.com/en-ca/d/surface-slim-pen-2/8tb9xw8rwc14) (SP2) is MPP v2.6, my pen digitizer ID is `0x97d8f7ad`, 4096 pressure levels.
+- [Metapen M1](https://metapen.com/products/m1) (M1) is MPP 1.51, 1024 pressure levels
+- [Metapen M2](https://metapen.com/products/m2) (M2) is MPP 2.0, 4096 pressure levels
 
 
 # Breakdown of messages captured from Windows
@@ -122,6 +122,11 @@ Adding special handling in the parsing for `0x6e`, we obtain the following frame
 ```
 The `0x6e` frame sits between the `0x1a` frame and the `0x0d` frame.
 
+## On dft
+
+The phase seems to be having a fairly insigificant role; spectograms can be made with `--color-phase` that visualise the phase
+together with the amplitude. 
+
 
 ## DftButton
 
@@ -226,7 +231,16 @@ It appears to show a pattern similar to the one seen for the Metapen M2 on windo
 
 ## IptsDftWindowPressure
 
-This isn't only pressure? Looks to be some binary code in there as well for M2 and SP2?
+Without a doubt there's binary data in the higher rows.
+
+The first 6 rows are not part of the binary data.
+The 7th row is high if there's no pen present, it goes low (lower?) than the 8-16th rows.
+Note that 8-16th is 9 bits, is it one parity? Right most column changes the most often, left values definitely change less.
+
+Not sure how this is encoded yet... if we record pressure, both SP2 and M2 go 0b010101111 when pressure is saturated. Could be encoding the pressure change between transmissions?
+
+Hamming code? Parity bit?
+
 
 ## IptsPenGeneral
 64 bytes
