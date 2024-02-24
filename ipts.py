@@ -615,8 +615,16 @@ class IthcHeader(Base):
                 ("num", ctypes.c_uint32),
                 ("size", ctypes.c_uint32),
                ]
-# Then follows the HIDReportFrame
-# Then 64 bytes of something we don't care about, then the reports.
+
+class IthcHIDReportFrame(Base):
+    _fields_ = [("type", ctypes.c_uint8),
+                ("_unknown", ctypes.c_uint8 * 3),
+                ("size", ctypes.c_uint32),
+                ("_pad", ctypes.c_uint8 * 3),
+                ("outer_size", ctypes.c_uint32),
+                ("_pad2", ctypes.c_uint8 * 14),
+                ("_pad3", ctypes.c_uint8 * 64),
+               ]
 
 # Read an ithc file, return is [[ithc_header, [[report_header, report_data],...],...]
 # This return can be passed into interpret_frames to get the parsed data.
@@ -630,9 +638,8 @@ def ithc_read(in_path):
         si = i
         ithc_header = IthcHeader.read_from(data, si)
         se = si + ithc_header.size + IthcHeader.sizeof()
-        hid_header = HIDReportFrame.read_from(data, si + IthcHeader.sizeof())
-        # Data is 64 bytes beyond this.
-        data_start = si + ithc_header.sizeof() + hid_header.sizeof() + 64
+        hid_header = IthcHIDReportFrame.read_from(data, si + IthcHeader.sizeof())
+        data_start = si + ithc_header.sizeof() + hid_header.sizeof()
         data_end = se - 1
         record_data = data[data_start:data_end]
         reports = []
