@@ -411,15 +411,21 @@ def run_plot_spectrogram(frames):
         text_rows.append(name_row)
         text_rows.append(index_row)
 
-    canvas = Image.new("RGB", (width,height + font_height * len(text_rows)), (0, 0, 0))
+    seperator_height = 1
+    text_height = font_height * len(text_rows)
+    canvas = Image.new("RGB", (width,height + seperator_height + text_height), (0, 0, 0))
     drawable = ImageDraw.Draw(canvas)
     for ri, row_entries in enumerate(text_rows):
         for position, text in row_entries:
             drawable.text((position,(ri) * font_height), text, (255, 255, 255))
 
-
+    drawable.line([(0, text_height), (width, text_height)], width=seperator_height, fill=(255, 255,255))
     spectrogram = Image.fromarray(np.asarray(rows, dtype=np.uint8))
-    canvas.paste(spectrogram, (0,len(text_rows)* font_height,width,height + len(text_rows)* font_height))
+    canvas.paste(spectrogram, (0,text_height + seperator_height,width,height + seperator_height + text_height))
+
+    # Check if the image is greyscale only, if so make it grey, this saves half the disk space.
+    if not (args.color_phase or args.decode_pressure_digital):
+        canvas = canvas.convert('L')
 
     canvas.save(args.spectrogram)
 
