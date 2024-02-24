@@ -325,9 +325,6 @@ Without a doubt there's binary data in the higher rows, it stays constant at sat
 
 Not sure how this is encoded yet... if we record pressure, both SP2 and M2 go 0b010101111 when pressure is saturated.
 
-Could be encoding the pressure change between transmissions? That would explain why the SP takes longer to transmit its delta.
-
-Hamming code? Parity bit?
 
 ### Saturating pressure on the M1
 
@@ -344,6 +341,14 @@ Digital data quickly reaches stable `0b010101111` state.
 Digital data takes longer to reach `0b010101111` state.
 
 ![2024_02_22_slim_pen_pressure](./media/saturating_pressure/2024_02_22_slim_pen_pressure.png)
+
+### Pressure thoughts
+
+- Could be encoding the pressure change between transmissions? That would explain why the SP takes longer to transmit its delta.
+- Hamming code? Parity bit?
+- Clearly not repeating the same data over multiple groups.
+- Likely conveys scale together with a value, that would explain why it is still so 'busy' when normal pen motion happens, it's communicating small changes accurately then.
+- If this is a delta, the driver needs some way to tell the pen it lost track and it needs to start fresh?
 
 ## Detecting Barrel Button & Touch
 
