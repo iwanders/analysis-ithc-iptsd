@@ -267,10 +267,11 @@ assert(color_map(0.0) == color_map(1.0))
     
 
 
-
 def run_plot_spectrogram(frames):
     import time
     import math
+    import numpy as np
+    from PIL import Image, ImageDraw
     grouped = load_relevant(args.input, ithc=args.ithc)
 
     import matplotlib.pyplot as plt
@@ -321,7 +322,7 @@ def run_plot_spectrogram(frames):
     for t in windows_to_plot:
         entries += window_sizes[t]
 
-
+    max_seen = 0
     decoded_bits = None
     for i, group in enumerate(grouped):
         window0a_counter = 0
@@ -359,6 +360,7 @@ def run_plot_spectrogram(frames):
                 window0a_counter += 1
         if args.logarithm:
             row = logrow(row)
+        max_seen = max(max_seen, max(z[0] for z in row))
         if args.color_phase or args.decode_pressure_digital:
             for mags, ratio in zip(row, phases):
                 r, g, b = color_map(ratio)
@@ -368,11 +370,58 @@ def run_plot_spectrogram(frames):
                     
         rows.append(row)
 
-    import matplotlib.pyplot as plt
-    import scipy.misc
-    scipy.misc.imsave(args.spectrogram, rows)
-    # plt.imshow(rows, origin='lower')
-    # plt.show()
+
+    # Iterate over the values to scale and convert to bytes.
+    for row in rows:
+        for rgb in row:
+            rgb[0] = int((rgb[0] / max_seen) * 255)
+            rgb[1] = int((rgb[1] / max_seen) * 255)
+            rgb[2] = int((rgb[2] / max_seen) * 255)
+
+    height = len(rows)
+    width = len(rows[0])
+    font_height = 12
+
+    text_rows = []
+    if args.title:
+        text_rows.append([(0, args.title)])
+    if args.window_header:
+        def index_numbers(start, up_to):
+            x = [(start + p * N, f"{p:x}") for p in range(up_to)]
+            y = [(start + up_to * N + p * N, f"{p:x}") for p in range(up_to)]
+            return x + y
+        name_row = []
+        index_row = []
+        window0a_counter = 0
+        for t in plot_order:
+            start = accumulated_window_pos[t] + 1
+            name = t.__name__.replace("IptsDftWindow", "")
+            if t == IptsDftWindow0x0a:
+                name_row.append((start, name))
+                name_row.append((start + 2 * 16 * N, name))
+                name_row.append((start + int(window_sizes[t] / 4) * N , "y"))
+                index_row.extend(index_numbers(start, int(window_sizes[t]/4)))
+                index_row.extend(index_numbers(start + 2 * 16 * N, int(window_sizes[t]/4)))
+            else:
+                name_row.append((start, name))
+                name_row.append((start + int(window_sizes[t] / 2) * N , "y"))
+                index_row.extend(index_numbers(start, int(window_sizes[t]/2)))
+                
+            
+        text_rows.append(name_row)
+        text_rows.append(index_row)
+
+    canvas = Image.new("RGB", (width,height + font_height * len(text_rows)), (0, 0, 0))
+    drawable = ImageDraw.Draw(canvas)
+    for ri, row_entries in enumerate(text_rows):
+        for position, text in row_entries:
+            drawable.text((position,(ri) * font_height), text, (255, 255, 255))
+
+
+    spectrogram = Image.fromarray(np.asarray(rows, dtype=np.uint8))
+    canvas.paste(spectrogram, (0,len(text_rows)* font_height,width,height + len(text_rows)* font_height))
+
+    canvas.save(args.spectrogram)
 
 
 def row_mag(dft, i):
@@ -573,6 +622,8 @@ if __name__ == "__main__":
     plot_spectrogram_parser.add_argument("input", help="The iptsd dump file to open")
     plot_spectrogram_parser.add_argument("spectrogram", help="Write histogram here", default="/tmp/spectrogram.png")
     plot_spectrogram_parser.add_argument("--no-logarithm", dest="logarithm", default=True, action="store_false", help="Whether or not to take the logarithm of the norm.")
+    plot_spectrogram_parser.add_argument("--no-header", dest="window_header", default=True, action="store_false", help="Don't render the header.")
+    plot_spectrogram_parser.add_argument("--title", dest="title", default=None, help="A single line of text to put in the first row of the header.")
     plot_spectrogram_parser.add_argument("--color-phase", default=False, action="store_true", help="Whether to color by phase.")
     plot_spectrogram_parser.add_argument("--decode-pressure-digital", default=False, action="store_true", help="Whether to color the decoded pressure bits.")
     plot_spectrogram_parser.add_argument("--scale", default=1.0, type=float, help="Multiply values by this before taking the log.")
