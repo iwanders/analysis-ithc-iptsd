@@ -92,6 +92,7 @@ Strike that, Slim Pen 2 has `0x6e` as unique frame type, which is sent on the fi
 
 <details>
   <summary>Frame and reports overview</summary>
+
 ```
 0x1a size: 4318 hexdump: 1a 00 00 de 10 00 00 00 00 00 d7 10 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
    0x5f IptsPenMetadata  len: 16  
@@ -147,6 +148,7 @@ Strike that, Slim Pen 2 has `0x6e` as unique frame type, which is sent on the fi
    0x62 IptsPenDetection  len: 16  
    0xff IptsTermination  len: 4  
 ```
+
 </details>
 
 - DataSelection is always before a DFT window.
@@ -210,7 +212,7 @@ The `0x6e` frame sits between the `0x1a` frame and the `0x0d` frame. This frame 
 
 
 
-## On dft
+## On DFTs
 
 The phase seems to be having a fairly insigificant role; spectograms can be made with `--color-phase` that visualise the phase
 together with the amplitude. Most digital signals appear to be either flipping between rows in the DFT rows, or with an amplitude threshold.
@@ -277,55 +279,62 @@ Caveats:
 ### Metapen M1
 For Metapen M1, this is always noise.
 
+![2024_02_24_m1_hover_and_contact_small_circle](./media/hover_touch_small_circle/2024_02_24_m1_hover_and_contact_small_circle.png)
+
 ### Metapen M2
 For Metapen M2, while in 'normal' (no buttons pressed) position, this is a repeating pattern (every 6 rows it seems), again with some of the flipping encoding seen in `DftButton`. Could be that it's trying to convey something like a pen id? One of the patents describes something like that.
 
+![2024_02_20_m2_hover_and_contact_small_circle](./media/hover_touch_small_circle/2024_02_20_m2_hover_and_contact_small_circle.png)
 
 ### Slim Pen 2 Windows
 
+For Slim Pen 2, we do not see an alternating bit pattern in 'normal'. When a button is pressed, almost all channels start flipping with each row.
 
-For Slim Pen 2, we do not see an alternating bit pattern in 'normal', need to check if there's soome FSK going on though. When a button is pressed, almost all channels start flipping with each row.
+![2024_02_20_sp_hover_and_contact_small_circle](./media/hover_touch_small_circle/2024_02_20_sp_hover_and_contact_small_circle.png)
 
-Interesting thing is that at the initial detection of the Slim Pen 2, we do see there's data encoded. This data appears to be identical between fresh pen detects.
+Interesting thing is that at the initial detection of the Slim Pen 2 (since correcting `0x6e` before the black line), we do see there's data encoded.
+This data appears to be identical between fresh pen detects. 
 
-Perhaps there's some handshake happening at the start that contains the pen id? The first column of `DftButton` seems to go high at the end of the handshake, with one very weird row. The first 16 
+After the initial detection, the `0x6e` frame is sent, and the Windows driver starts sending periodic frames to the hardware that look like this:
 
-Looking at recordings from Linux, we do see that alternating pattern on the data lines here! (`semicircle.bin`).
-
-Ooh... insight! From DigiInfo (not in the xmls) I spotted;
-```
-  Transducer Serial:
-    0x97d8f7ad
-  Transducer Vendor:
-    0x0000045e (MS HID id)
-```
-
-That `0x97d8f7ad` id is the id that is sent by the windows driver to the screen! In the full irp log drivers we saw windows send data to the touch screen when the pen was used... So on Linux the pen and touch screen is operating in a different mode?
-
-Found the digitizer ID in the windows irp logs. It's in a special frame. It is likely decoded by the touch screen? We do see the repeating pattern on `0x0a` when the pen is first brought close.
-
-Current speculation, needs checking is that the windows driver begins sending that 
 ```
 09 8e a5 15 02 00 00 00 00 ad f7 d8 97 70 17 00
+                          |digitizer  |
 ```
 
-Request to the hardware to let the stylus know it is still being tracked and it doesn't have to send its 'init' transmission again.
+Probalby to communicate to the hardware that the stylus it is still being tracked and it doesn't have to send its 'init' transmission again.
 
 ### Slim Pen 2 Linux
 
-It appears to show a pattern similar to the one seen for the Metapen M2 on windows. It is possible that it falls back to MPP 2.0 functionality in the linux case? Does this, combined with this screen cause the wavy positions?
+It appears to show a pattern similar to the one seen for the Metapen M2 on windows.
+It is possible that it falls back to MPP 2.0 functionality in the linux case?
+Does this, combined with this screen cause the wavy positions?
+
+![2024_02_24_linux_sp_hover_and_contact_small_circle](./media/hover_touch_small_circle/2024_02_24_linux_sp_hover_and_contact_small_circle.png)
 
 ## IptsDftWindowPressure
 
-Without a doubt there's binary data in the higher rows.
+Without a doubt there's binary data in the higher rows, it stays constant at saturated pressure.
 
-The first 6 rows are not part of the binary data.
-The 7th row is high if there's no pen present, it goes low (lower?) than the 8-16th rows.
-Note that 8-16th is 9 bits, is it one parity? Right most column changes the most often, left values definitely change less.
+- Saturating pressure on the M1
+![2024_02_22_metapen_m1_pressure](./media/saturating_pressure/2024_02_22_metapen_m1_pressure.png)
+- Saturating pressure on the M2
+![2024_02_22_metapen_m2_pressure](./media/saturating_pressure/2024_02_22_metapen_m2_pressure.png)
+- Saturating pressure on the SP
+![2024_02_22_metapen_m2_pressure](./media/saturating_pressure/2024_02_22_slim_pen_pressure.png)
 
-Not sure how this is encoded yet... if we record pressure, both SP2 and M2 go 0b010101111 when pressure is saturated. Could be encoding the pressure change between transmissions?
+
+- The first 6 rows are not part of the binary data.
+- The 7th row is high if there's no pen present, it goes low (lower?) than the 8-16th rows.
+- Note that 8-16th is 9 bits, is it one parity? Right most column changes the most often, left values definitely change less.
+
+Not sure how this is encoded yet... if we record pressure, both SP2 and M2 go 0b010101111 when pressure is saturated.
+
+Could be encoding the pressure change between transmissions? That would explain why the SP takes longer to transmit its delta.
 
 Hamming code? Parity bit?
+
+
 
 
 ## IptsPenGeneral
