@@ -1,11 +1,22 @@
-# Analysis on Intel's Touch Host Controller in the Microsoft Surface Pro 9.
+# Analysis on Intel's Touch Host Controller
 
-Some notes and discoveries from analysis, goal here is to
-- Address the button glitching, which causes problems with the Slim Pen 2, also reported [here](https://github.com/quo/iptsd/issues/5), [here](https://github.com/linux-surface/iptsd/issues/102).
-- Help a bit towards reverse enginereing the [pen data format](https://github.com/linux-surface/intel-precise-touch/issues/14).
-- Learn something new, see how things work, etc etc.
+This host controller is used in the Microsoft Surface Pro 9.
 
-## Structure
+Some notes and discoveries from analysis, goal is mainly to address the button glitching, which causes problems with the Slim Pen 2, also reported [here](https://github.com/quo/iptsd/issues/5), [here](https://github.com/linux-surface/iptsd/issues/102) and [here](https://github.com/linux-surface/iptsd/issues/99).
+
+Help a bit towards reverse engineering the [pen data format](https://github.com/linux-surface/intel-precise-touch/issues/14), and [ipts for surface gen 7](https://github.com/linux-surface/intel-precise-touch/issues/4). Lots of amazing work has been done by the community, none of this here would've been possible without that foundation.
+
+License is GPL, just like [iptsd](https://github.com/linux-surface/iptsd).
+
+Further things to be aware of when reading this document:
+- Nothing in this document is to be assumed as accurate or correct, it's all speculative.
+- I named the images `spectrogram`, while technically incorrect they do look a lot like spectrograms, y axis is time (increasing towards the bottom).
+- Rows are zero indexed.
+- This is a repo I made for myself, information deemed accurate should probably be migrated to the iptsd wiki. Not as PRs into this repo.
+
+## Structure of this repo
+
+It's a bit of a mess, since this grew organically as I needed new functionality. The important parts are:
 
 - Information on recording on windows can be found [recording_windows.md](recording_windows.md).
 - Some patterns for [ImHex](https://github.com/WerWolv/ImHex) can be found at [imhex.md](imhex.md).
@@ -13,30 +24,52 @@ Some notes and discoveries from analysis, goal here is to
 - The [irpmon_thcbase.py](irpmon_thcbase.py) file allows converting a data capture from Windows to a iptsd binary dump file.
 - The [print_data.py](print_data.py) file allows creating spectrograms and does some decoding.
 
-
 ## Existing docs
 
 Unfortunately, Microsoft Pen Protocol itself is not a publically available specification, it would make this so much easier... Microsoft did buy the company called `N-Trig`, so reading patents from that company may prove helpful.
 
-- [Pen state transitions](https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/windows-pen-states) describes the state diagram for pens in windows. Also describes area of palm rejection.
-- The [haptic pen implementation guide](https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/haptic-pen-implementation-guide) describes the pages and ids for haptic waveforms.
 - The [fcc report](https://fccid.io/C3K1962) for the slim pen 2, unfortunately this seems to only pertain to the bluetooth aspect.
 - [US9018547][US9018547] describes a method of interpolating the position between antenna using a ratio.
 - [US8669967][US8669967] describes the idea time slots for use by the screen and pen communication.
+- https://github.com/linux-surface/intel-precise-touch/issues/14 Reverse-Engineering Gen7+ Pen Data Format
+- https://github.com/linux-surface/intel-precise-touch/issues/4 IPTS on Surface Gen7
+- [Pen state transitions](https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/windows-pen-states) describes the state diagram for pens in windows. Also describes area of palm rejection.
+- The [haptic pen implementation guide](https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/haptic-pen-implementation-guide) describes the pages and ids for haptic waveforms.
 
 # Analysis
+
+Okay, so the main goals for me are:
+
+- Get a better understanding of how this all works, what data is there, how is it used, just for learning.
+- Fix the button glitching that happens with my Surface Pro 9 and Slim Pen 2.
+
+## Summary of my current understanding
+
+- On Linux, we currently don't get the `0x6e` frame; Perhaps it is in a different mode?
+- On Windows, the driver sends a message that has the digitizer id every 2-3 frames.
+- On Windows, the Slim Pen 2 does not have the binary pattern in the `0x0a` dft windows.
+- On Windows, we see the binary pattern in the `0x0a` dft windows, on Linux we see the same for the Slim Pen 2.
+- The DftButton window holds repeating binary patterns in column 2 and 3, column 1 is the marker. This is unique per pen.
+- Pressure window `0x07-0x0F` holds a digital representation of the pressure.
+- The first column of the Button DFT window frame is not accurate for MPP 2.0+, 
 
 ## Hardware
 
 I obtained a few pens:
 
-- [Microsoft Surface Slim Pen 2](https://www.microsoft.com/en-ca/d/surface-slim-pen-2/8tb9xw8rwc14) (SP2) is MPP v2.6, 4096 pressure levels, digitizer ID is `0x97d8f7ad`.
-- [Metapen M1](https://metapen.com/products/m1) (M1) is MPP 1.51, 1024 pressure levels
-- [Metapen M2](https://metapen.com/products/m2) (M2) is MPP 2.0, 4096 pressure levels
+- [Microsoft Surface Slim Pen 2](https://www.microsoft.com/en-ca/d/surface-slim-pen-2/8tb9xw8rwc14) (denoted SP) is MPP v2.6, 4096 pressure levels, digitizer ID is `0x97d8f7ad`.
+- [Metapen M1](https://metapen.com/products/m1) (denoted M1) is MPP 1.51, 1024 pressure levels
+- [Metapen M2](https://metapen.com/products/m2) (denoted M2) is MPP 2.0, 4096 pressure levels
 
+## Data
 
-# Breakdown of messages captured from Windows
+- Windows data captured using the method described in [recording_windows.md](recording_windows.md).
+- Most current data on this page is from captures from Windows. Data sent to the device is NOT visualised.
+- Data referred to as `NP` is from [this issue](https://github.com/quo/iptsd/issues/5) where @NP-chaonay linked to a google drive holding recordings of his Slim Pen 2.
 
+## Breakdown of messages captured from Windows
+
+Data recorded using IRPMon.
 First byte seems to denote the frame type. The multiple records on the `0x1a` frame is not a bug in the parser, data actually contains this, and it appears to be unique.
 
 This pattern, and the sizes of individual packets are identical between Slim Pen2, Metapen M1, Metapen M2. Strike that, Slim Pen 2 has `0x6e` as unique frame type, which is sent on the first detection of the pen.
@@ -120,10 +153,11 @@ In `0x1a`, the magnitude field still matches the center most coefficients, but t
 - Rows are consistent, that is; the entire row seems to represent the same data (all 9 bins indicate the same).
 
 ## The 0x6e frame
-Another revelation, my digitizer ID shows up in a `0x6e` HID frame, which seems to have a different header format;
+Another revelation, my SP digitizer ID shows up in a `0x6e` HID frame, which seems to have a different header format.
 
 ```
 0x6e size: 38872 hexdump: 6e ad f7 d8 97 00 00 00 00 00 00 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
+                            |digitizer  |
 ```
 
 Compare that to:
@@ -134,7 +168,7 @@ Compare that to:
 Where the size is in the spot where the current digitizer ID is located, so...
 The `0x6e` frame has a special header, because `38872` as size doesn't appear to be right; the reports until `0xff` don't add up.
 
-Adding special handling in the parsing for `0x6e`, we obtain the following frame, with the size manually set to `1348`:
+Adding special handling in the parsing for `0x6e` header, it is 29 bytes long, we obtain the following frame, with the size manually set to `1348`:
 
 ```
 0x6e size: 1348 hexdump: 6e ad f7 d8 97 00 00 00 00 00 00 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
@@ -147,19 +181,17 @@ Adding special handling in the parsing for `0x6e`, we obtain the following frame
    0xff IptsTermination  len: 4 
 0x0d size: 1982 hexdump: 0d 00 00 be 07 00 00 00 00 00 b7 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
 ```
-The `0x6e` frame sits between the `0x1a` frame and the `0x0d` frame.
+The `0x6e` frame sits between the `0x1a` frame and the `0x0d` frame. This frame is sent when the screen detects the pen, it shows up in spectrogram
 
 ## On dft
 
 The phase seems to be having a fairly insigificant role; spectograms can be made with `--color-phase` that visualise the phase
-together with the amplitude. 
+together with the amplitude. Most digital signals appear to be either flipping between rows in the DFT rows, or with an amplitude threshold.
 
 
 ## DftButton
 
 Currently the first row of this DFT frame is used to determine the button state, by combining it with the phase of the position.
-
-I don't think this is the button in the first column, it does transfer binary data though:
 
 ![2024_02_19_dft_button_histogram](media/2024_02_19_dft_button_histogram.png)
 
@@ -168,7 +200,6 @@ I don't think this is the button in the first column, it does transfer binary da
 - Row 2/3: One of these is high to represent bit state?
 
 Yeah, this is definitely a repeating bytestream!
-
 
 For Slim Pen 2, it's a 20 byte repeating pattern most of the time. There's
 a few outliers that have different data, rather 153 bits.
@@ -179,46 +210,42 @@ more sync markers. Same with the metapen m1, also 22 bytes.
 
 On Slim Pen 2, bit ratio of 1s to 0s is 1.14, metapen m2 is at 1.25. Likely whitened data.
 
+
 For the slim pen 2 we clearly know the start and end of the transmission.
-If we align the metapen's against the most matching data from the slim pen, we get:
+This sequence doesn't appear to change, even on Linux it is identical to Windows.
 
-For the Slim Pen 2:
-```
-7a 99 ca 56 97 19 1e 58 2d 58 b4 9d 10 77 38 4c d5 12 da 80
-```
-This doesn't appear to change, one of the first data captures I have has the exact same (even from linux).
+For the MetaPen's we don't know where the data starts and stops, but 
+if we align the metapen's against the most matching data from the slim pen we obtain:
 
-For Metapen M2, we don't really know where the signal stops and starts.
 ```
-7f 9c 75 84 6f 7c 63 68 59 30 57 30 4c d4 41 dc 3a 58 31 5c 2f bc 7f 9c 75 84 6f...
+For the Slim Pen 2: 7a 99 ca 56 97 19 1e 58 2d 58 b4 9d 10 77 38 4c d5 12 da 80
+For Metapen M2      7f 9c 75 84 6f 7c 63 68 59 30 57 30 4c d4 41 dc 3a 58 31 5c 2f bc 7f 9c 75 84 6f...
+For Metapen M1      78 8c 75 84 6d 68 61 7c 59 30 55 24 49 d0 45 c4 3e 40 32 54 2f bc 78 8c 75 84 6d ...
 ```
 
-For Metapen M1, same story.
+From NP data, which is a Slim Pen 2, but a different id
 ```
-78 8c 75 84 6d 68 61 7c 59 30 55 24 49 d0 45 c4 3e 40 32 54 2f bc 78 8c 75 84 6d ...
+NP Slim Pen 2: 79 91 c2 06 a7 99 dc 58 2d 44 f4 9d 10 30 39 50 d5 12 da 80
+My Slim Pen 2: 7a 99 ca 56 97 19 1e 58 2d 58 b4 9d 10 77 38 4c d5 12 da 80
+
+Removing identical bytes:
+NP Slim Pen 2: 79 91 c2 06 a7 99 dc       44 f4       30 39 50          80
+My Slim Pen 2: 7a 99 ca 56 97 19 1e       58 b4       77 38 4c          80
 ```
-
-
-Ah, on the metapen m2, we do see the first column of the Button Dft window go high.
-
-
-For the metapen m1, we do see that the first column matches the button signal.
-For the Slim Pen 2 and Metapen M2 however, the first column does change in strength,
-main thing seen however is that we see the 'data' dft's go alternating.
 
 Speculation...
-- Battery level?
+- ~Battery level?~ Ruled out, pen at 94% gives same reading, battery is likely through BLE.
 - Digitizer id?
 - Serial number?
 
-We've got pretty much nothing to go on for this one though.
-
-From NP data;
-```
-79 91 c2 06 a7 99 dc 58 2d 44 f4 9d 10 30 39 50 d5 12 da 80
-```
+One of the driver blobs mentions `CRC4`, but would first need to figure out the data whitenening.
 
 ## IptsDftWindow0x0a
+
+This is a very interesting frame, my hunch is that it is used to convey a unique pen id.
+
+Caveats:
+- First 0x0a's row 4 and 5 
 
 ### Metapen M1
 For Metapen M1, this is always noise.

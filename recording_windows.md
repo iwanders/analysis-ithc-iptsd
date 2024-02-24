@@ -6,7 +6,10 @@ Use [IRPMon](https://github.com/MartinDrab/IRPMon).
 - Enable capturing data.
 - Disable data stripping, there's a lot in each frame.
 - When capturing IntelTHCBase in the gui, look for `\Driver\IntelTHCBase` then expand everything, but don't use the `UPP:` entry, use one level up in the hierarchy from that one.
-
+- Export as `log` file (json is malformed), didn't bother looking at the binary dumps.
+- Gzip your log, it should compress well, use `name.log.gz`.
+- Use [irpmon_thcbase.py](irpmon_thcbase.py) to convert this (gzipped) log file to a iptsd compatible binary dump.
+- Note that this DOES discard outgoing communication, which does exist on windows.
 
 ## Boot logging
 
