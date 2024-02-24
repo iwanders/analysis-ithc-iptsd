@@ -15,10 +15,12 @@ Further things to be aware of when reading this document:
 
 I named the images `spectrogram`, while technically incorrect they do look a lot like spectrograms, y axis is time (increasing towards the bottom).
 The header contains the filename of the original binary dump file (windows logs are first converted to iptsd dumps).
-The order of the dft windows is fixed. The `x` dimension starts at the name of the window, the `y` dimension start is denoted. The dft rows are thus
-columns in this representation:
+The order of the dft windows is fixed. The `x` dimension starts at the name of the window, the `y` dimension start is denoted.
+The dft rows are thus columns in this representation:
 
 ![2024_02_20_sp_hover_and_contact_small_circle](./media/hover_touch_small_circle/2024_02_20_sp_hover_and_contact_small_circle.png)
+
+Intensity is scaled based on the highest value in the horizontal image row (so if the entire row is low value noise, it will still show up).
 
 ## Structure of this repo
 
@@ -337,11 +339,65 @@ No digital data to be seen here.
 Digital data quickly reaches stable `0b010101111` state.
 ![2024_02_22_metapen_m2_pressure](./media/saturating_pressure/2024_02_22_metapen_m2_pressure.png)
 
-###Saturating pressure on the SP
+### Saturating pressure on the SP
 
 Digital data takes longer to reach `0b010101111` state.
 
-![2024_02_22_metapen_m2_pressure](./media/saturating_pressure/2024_02_22_slim_pen_pressure.png)
+![2024_02_22_slim_pen_pressure](./media/saturating_pressure/2024_02_22_slim_pen_pressure.png)
+
+## Detecting Barrel Button & Touch
+
+We introduce the following test sequence:
+- Approach the screen.
+- Depress the barrel button.
+- Touch the screen with the tip of the stylus, button held.
+- Move a bit.
+- Release the button.
+- Retract stylus from screen.
+
+
+### Barrel test M1
+
+Only the first column of the button dft goes high while the button is held.
+After the button is released, we see the digital pattern on column 2 and 3 of the button.
+![2024_02_24_m1_hover_button_click_touch_release_wait_hover](./media/hover_button_click_touch/2024_02_24_m1_hover_button_click_touch_release_wait_hover.png)
+
+
+### Barrel test M2
+
+When the button is pressed, the 0th column of the `Button` Frame does go high, as do most of the `0x0a` dft window columns.
+
+Interesting bits here is that `Position2`'s 4th column goes high when the button is pressed (compared to 3), and switches to 5 when the screen is touched, but when the button is released, it stays on `5`.
+
+A strong indicator for barrel present: `0x0a[0]`'s row 5 being higher than 4.
+
+A strong indicator for screen is touched: `Position`'s row 1 becomes bright, or `Position2` switching from 2 to 3.
+
+
+![2024_02_20_m2_hover_button_click_touch_release_wait_hover](./media/hover_button_click_touch/2024_02_20_m2_hover_button_click_touch_release_wait_hover.png)
+
+### Barrel test SP Windows
+![2024_02_20_sp_hover_button_click_touch_release_wait_hover](./media/hover_button_click_touch/2024_02_20_sp_hover_button_click_touch_release_wait_hover.png)
+
+- We do see the 0th column of the `Button` frame going high, but it's not nearly as strong as the other binary indicators.
+- A strong indicator for barrel present: `0x0a[0]`'s row 5 being higher than 4. (Same as M2)
+- A strong indicator for screen is touched: `Position`'s row 1 becomes bright, or `Position2` switching from 2 to 3. (Same as m2)
+
+### Barrel test SP Linux
+
+![2024_02_24_linux_sp_hover_button_click_touch_release_wait_hover](./media/hover_button_click_touch/2024_02_24_linux_sp_hover_button_click_touch_release_wait_hover.png)
+
+- Most intriguingly we see a binary signal being transmitted even while the button is held, which is very different from the M2. (is it just xor-ed?)
+- A strong indicator for barrel present: `0x0a[0]`'s row 5 being higher than 4. (Same as m2 and SP windows)
+- A strong indicator for screen is touched: `Position`'s row 1 becomes bright, or `Position2` switching from 2 to 3. (Same as m2 and SP windows)
+
+### Barrel detection
+
+We get a clear binary signal for the barrel detection with `0x0a[0]`'s row 5 being higher than 4.
+Risk here is that if `0x0a` is still used to convey a pen identifier, row 4 and 5 may only be applicable for my pens, not for everyone's.
+
+
+The clearest visual indication however is that numerous pairs of rows are switching each group.
 
 
 ## Notes
