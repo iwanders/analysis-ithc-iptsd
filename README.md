@@ -60,7 +60,7 @@ Okay, so the main goals for me are:
 - For all digital data the `x` and `y` signals can be combined into each other.
 - The binary pattern in `0x0a` goes away if the barrel button is held, then the rows become alternating each group.
 - The DftButton window holds repeating binary patterns in column 2 and 3, column 1 is the marker. This is unique per pen.
-- Pressure window `0x07-0x0F` holds a digital representation of the pressure, likely only a delta. Each group holds a full state.
+- Pressure window `0x07-0x0F` holds a digital representation of the pressure, likely only a delta. Information is not spread & repeated across multiple groups.
 - The first column of the Button DFT window frame is not accurate for MPP 2.0+, 
 
 ## Hardware
