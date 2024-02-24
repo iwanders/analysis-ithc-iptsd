@@ -186,6 +186,11 @@ Speculation...
 
 We've got pretty much nothing to go on for this one though.
 
+From NP data;
+```
+79 91 c2 06 a7 99 dc 58 2d 44 f4 9d 10 30 39 50 d5 12 da 80
+```
+
 ## IptsDftWindow0x0a
 
 ### Metapen M1
