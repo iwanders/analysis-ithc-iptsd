@@ -10,9 +10,15 @@ License is GPL, just like [iptsd](https://github.com/linux-surface/iptsd).
 
 Further things to be aware of when reading this document:
 - Nothing in this document is to be assumed as accurate or correct, it's all speculative.
-- I named the images `spectrogram`, while technically incorrect they do look a lot like spectrograms, y axis is time (increasing towards the bottom).
-- Rows are zero indexed.
 - This is a repo I made for myself, information deemed accurate should probably be migrated to the iptsd wiki. Not as PRs into this repo.
+
+
+I named the images `spectrogram`, while technically incorrect they do look a lot like spectrograms, y axis is time (increasing towards the bottom).
+The header contains the filename of the original binary dump file (windows logs are first converted to iptsd dumps).
+The order of the dft windows is fixed. The `x` dimension starts at the name of the window, the `y` dimension start is denoted. The dft rows are thus
+columns in this representation:
+
+![2024_02_20_sp_hover_and_contact_small_circle](./media/hover_touch_small_circle/2024_02_20_sp_hover_and_contact_small_circle.png)
 
 ## Structure of this repo
 
@@ -49,8 +55,10 @@ Okay, so the main goals for me are:
 - On Windows, the driver sends a message that has the digitizer id every 2-3 frames.
 - On Windows, the Slim Pen 2 does not have the binary pattern in the `0x0a` dft windows.
 - On Windows, we see the binary pattern in the `0x0a` dft windows, on Linux we see the same for the Slim Pen 2.
+- For all digital data the `x` and `y` signals can be combined into each other.
+- The binary pattern in `0x0a` goes away if the barrel button is held, then the rows become alternating each group.
 - The DftButton window holds repeating binary patterns in column 2 and 3, column 1 is the marker. This is unique per pen.
-- Pressure window `0x07-0x0F` holds a digital representation of the pressure.
+- Pressure window `0x07-0x0F` holds a digital representation of the pressure, likely only a delta. Each group holds a full state.
 - The first column of the Button DFT window frame is not accurate for MPP 2.0+, 
 
 ## Hardware
@@ -66,14 +74,24 @@ I obtained a few pens:
 - Windows data captured using the method described in [recording_windows.md](recording_windows.md).
 - Most current data on this page is from captures from Windows. Data sent to the device is NOT visualised.
 - Data referred to as `NP` is from [this issue](https://github.com/quo/iptsd/issues/5) where @NP-chaonay linked to a google drive holding recordings of his Slim Pen 2.
+- There is a LOT of data, this here mainly focusses on the DFT windows.
 
 ## Breakdown of messages captured from Windows
 
-Data recorded using IRPMon.
-First byte seems to denote the frame type. The multiple records on the `0x1a` frame is not a bug in the parser, data actually contains this, and it appears to be unique.
+Data recorded using IRPMon. The data comes in with a few individual IRP transactions;
 
-This pattern, and the sizes of individual packets are identical between Slim Pen2, Metapen M1, Metapen M2. Strike that, Slim Pen 2 has `0x6e` as unique frame type, which is sent on the first detection of the pen.
+I've called these 'frames', invididual frames hold multiple reports, the reports are the ones we are familiar with from ipts.
+From these frames we can create 'groups', I just decided to split those on the last unique window type (`IptsDftWindowPosition2`),
+which conveniently worked out well for the `0x6e` frame as we get a mostly black line.
 
+First byte seems to denote the frame type. The multiple reports on the `0x1a` frame is not a bug in the parser,
+data actually contains this, and the data is not duplicated, first `IptsDftWindow0x0a` is different from the second.
+
+This pattern, and the sizes of individual packets are identical between Slim Pen2, Metapen M1, Metapen M2.
+Strike that, Slim Pen 2 has `0x6e` as unique frame type, which is sent on the first detection of the pen, it has its own section after this list.
+
+<details>
+  <summary>Frame and reports overview</summary>
 ```
 0x1a size: 4318 hexdump: 1a 00 00 de 10 00 00 00 00 00 d7 10 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
    0x5f IptsPenMetadata  len: 16  
@@ -128,8 +146,8 @@ This pattern, and the sizes of individual packets are identical between Slim Pen
    0x5c IptsDftWindow  len: 972  IptsDftWindowPosition2
    0x62 IptsPenDetection  len: 16  
    0xff IptsTermination  len: 4  
-
 ```
+</details>
 
 - DataSelection is always before a DFT window.
 - PenDetection is always after a DFT window.
@@ -142,7 +160,9 @@ each detection cycle. Hunch;
 - `IptsDftWindowButton` and `0x1a`: Digital data frames?
 - `0x0d`: Pressure is here, perhaps analog frame? Nope
 
-No idea what these frames really denote, because just grouping data. It is most likely that these are the individual timeslices during which the pens communicate. As described in [US8669967][US8669967]. 
+No idea what these frames really denote, because just grouping data. 
+It is most likely that these are the individual timeslices during which the pens communicate.
+As described in [US8669967][US8669967]. 
 
 
 In `0x1a`, the magnitude field still matches the center most coefficients, but that is not the highest or single peak.
@@ -153,7 +173,12 @@ In `0x1a`, the magnitude field still matches the center most coefficients, but t
 - Rows are consistent, that is; the entire row seems to represent the same data (all 9 bins indicate the same).
 
 ## The 0x6e frame
-Another revelation, my SP digitizer ID shows up in a `0x6e` HID frame, which seems to have a different header format.
+
+This is a very special frame, in fact it was hidden at first because the frame header is different.
+If parsed with the normale frame header the size is large, and we just skip a chunk.
+
+
+Another revelation; my SP digitizer ID (captured from DigiInfo on Windows) shows up in a `0x6e` HID frame, which seems to have a different header format.
 
 ```
 0x6e size: 38872 hexdump: 6e ad f7 d8 97 00 00 00 00 00 00 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
@@ -181,7 +206,9 @@ Adding special handling in the parsing for `0x6e` header, it is 29 bytes long, w
    0xff IptsTermination  len: 4 
 0x0d size: 1982 hexdump: 0d 00 00 be 07 00 00 00 00 00 b7 07 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
 ```
-The `0x6e` frame sits between the `0x1a` frame and the `0x0d` frame. This frame is sent when the screen detects the pen, it shows up in spectrogram
+The `0x6e` frame sits between the `0x1a` frame and the `0x0d` frame. This frame is sent when the screen detects the pen, it shows up in spectrogram as a black line.
+
+
 
 ## On dft
 
