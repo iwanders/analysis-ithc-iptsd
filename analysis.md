@@ -2,18 +2,16 @@
 
 I obtained a few pens:
 
-- [Microsoft Surface Slim Pen 2](https://www.microsoft.com/en-ca/d/surface-slim-pen-2/8tb9xw8rwc14) (SP2) is MPP v2.6, my pen digitizer ID is `0x97d8f7ad`, 4096 pressure levels.
+- [Microsoft Surface Slim Pen 2](https://www.microsoft.com/en-ca/d/surface-slim-pen-2/8tb9xw8rwc14) (SP2) is MPP v2.6, 4096 pressure levels, digitizer ID is `0x97d8f7ad`.
 - [Metapen M1](https://metapen.com/products/m1) (M1) is MPP 1.51, 1024 pressure levels
 - [Metapen M2](https://metapen.com/products/m2) (M2) is MPP 2.0, 4096 pressure levels
 
 
 # Breakdown of messages captured from Windows
 
-First byte seems to denote the frame type, not yet sure how this is parsed on the iptsd side.
+First byte seems to denote the frame type. The multiple records on the `0x1a` frame is not a bug in the parser, data actually contains this, and it appears to be unique.
 
-The multiple records on the `0x1a` frame is not a bug in the parser, data actually contains this, and it appears to be unique.
-
-This pattern, and the sizes of individual packets are identical between Slim Pen2, Metapen M1, Metapen M2. Strike that, Slim Pen 2 has `0x6e` as unique frame type.
+This pattern, and the sizes of individual packets are identical between Slim Pen2, Metapen M1, Metapen M2. Strike that, Slim Pen 2 has `0x6e` as unique frame type, which is sent on the first detection of the pen.
 
 ```
 0x1a size: 4318 hexdump: 1a 00 00 de 10 00 00 00 00 00 d7 10 00 00 00 ff 00 00 0b 08 00 00 00 00 00 00 00 00 00 
@@ -80,17 +78,18 @@ This pattern, and the sizes of individual packets are identical between Slim Pen
 Speculating, from patents it seems it is common to have several sections in
 each detection cycle. Hunch;
 
-- `IptsDftWindowButton` and `0x1a`: Digital data frames? Fore 
-- `0x0d`: Pressure is here, perhaps analog frame?
+- `IptsDftWindowButton` and `0x1a`: Digital data frames?
+- `0x0d`: Pressure is here, perhaps analog frame? Nope
 
+No idea what these frames really denote, because just grouping data. It is most likely that these are the individual timeslices during which the pens communicate. As described in [US8669967][US8669967]. 
 
 
 In `0x1a`, the magnitude field still matches the center most coefficients, but that is not the highest or single peak.
 - Button has 4 rows for both dimensions
 - `0x0a` has 16 rows for both dimensions.
-- The frequencies never change in the `0x1a` frame.
-- When hovering, button goes to zeros. `0x0a` goes to only having rows `2,3`, `6,7`, `10,11`, `14,15`
-- Rows are consistent, that is; the entire row seems to represent the same data.
+- The frequencies never? change in the `0x1a` frame.
+- When hovering, button goes to zeros. `0x0a` goes to only having rows `2,3`, `6,7`, `10,11`, `14,15`; Spectrum shows this is noise.
+- Rows are consistent, that is; the entire row seems to represent the same data (all 9 bins indicate the same).
 
 ## The 0x6e frame
 Another revelation, my digitizer ID shows up in a `0x6e` HID frame, which seems to have a different header format;
@@ -332,39 +331,5 @@ Depends on the DFT window, third byte from the end is dft window type. From [imh
 
 For the majority of frames, the beginning holds the 16 magnitudes for x and y. The end block is always 12 bytes and holds the dft window type.
 
-```
-match (dft.data_type) {
-  (0x06): datasel_outer<datasel_0x06> data @ addressof(pad);
-  (0x07): datasel_outer<datasel_allmag> data @ addressof(pad);
-  (0x0a): datasel_outer<datasel_allmag> data @ addressof(pad);
-  (0x0b): datasel_outer<datasel_allmag> data @ addressof(pad);
-  (0x08): datasel_outer<datasel_0x08> data @ addressof(pad);
-  (_): datasel_outer<datasel_unknown> data @ addressof(pad);
-} 
-```
-`0x06` is the position dft window, so the most interesting anyways.
 
-```
-struct datasel_end {
-    u32 something[2];
-    u8 indices[8];
-    u8 _pad;
-    u8 dft_type;
-    u8 _01;
-    u8 _ff;
-};
-
-struct datasel_pos_dim{
-    u32 something[6];
-    u32 mag_x0;
-    u32 something2[2];
-    u32 mag_x1[7];
-
-};
-
-struct datasel_0x06 {
-  datasel_pos_dim x;
-  datasel_pos_dim y;
-  datasel_end info;
-};
-```
+[US8669967]: https://patents.google.com/patent/US8669967B2/
