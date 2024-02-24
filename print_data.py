@@ -6,7 +6,7 @@
 import sys
 import json
 
-from ipts import iptsd_read, extract_reports, chunk_reports, report_lookup
+from ipts import iptsd_read, extract_reports, chunk_reports, report_lookup, ithc_read
 from ipts import IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a, IPTS_DFT_NUM_COMPONENTS, IptsDftWindow
 from digi_info import load_digiinfo_xml
 MID = int(IPTS_DFT_NUM_COMPONENTS / 2)
@@ -71,8 +71,9 @@ def print_dft(d, row_limit=9999, row_colors={}):
     print_rows(d.y, "y")
 
 
-def load_relevant(fname):
-    z = iptsd_read(fname)
+def load_relevant(fname, ithc=False):
+    loader = ithc_read if ithc else iptsd_read
+    z = loader(fname)
     report_types = set([IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a])
     reports = extract_reports(z, report_types, with_data=True)
     grouped = chunk_reports(reports, report_types)
@@ -81,7 +82,8 @@ def load_relevant(fname):
 
 
 def run_print_report_types(args):
-    z = iptsd_read(args.input)
+    loader = ithc_read if args.ithc else iptsd_read
+    z = loader(args.input)
     for frame_header, reports in z:
         frame_type = frame_header.type
         print(f"0x{frame_type:0>2x} size: {frame_header.size} hexdump: {hexify(bytes(frame_header))}")
@@ -98,7 +100,7 @@ def run_print_report_types(args):
             
 
 def run_print_grouped(args):
-    grouped = load_relevant(args.input)
+    grouped = load_relevant(args.input, ithc=args.ithc)
 
     # IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a
     def print_all(group):
@@ -114,7 +116,7 @@ def run_print_grouped(args):
 
 def run_single(args):
     import time
-    grouped = load_relevant(args.input)
+    grouped = load_relevant(args.input, ithc=args.ithc)
     grouped = grouped[10:-10]
 
     for i, group in enumerate(grouped):
@@ -129,7 +131,7 @@ def run_single(args):
 
 def run_combined(args):
     import time
-    grouped = load_relevant(args.input)
+    grouped = load_relevant(args.input, ithc=args.ithc)
     # grouped = grouped[10:-10]
 
     for i, group in enumerate(grouped):
@@ -146,7 +148,7 @@ def run_combined(args):
 
 def run_row_comparison(args):
     import time
-    grouped = load_relevant(args.input)
+    grouped = load_relevant(args.input, ithc=args.ithc)
 
     def create_consistency_colors(dft):
         def row_consistent(row):
@@ -194,7 +196,7 @@ def run_row_comparison(args):
 
 def run_plot_iq(frames):
     import time
-    grouped = load_relevant(args.input)
+    grouped = load_relevant(args.input, ithc=args.ithc)
 
     import numpy as np
     import matplotlib.pyplot as plt
@@ -269,7 +271,7 @@ assert(color_map(0.0) == color_map(1.0))
 def run_plot_spectrogram(frames):
     import time
     import math
-    grouped = load_relevant(args.input)
+    grouped = load_relevant(args.input, ithc=args.ithc)
 
     import matplotlib.pyplot as plt
 
@@ -425,7 +427,7 @@ if True:
     assert(orig == manchester_decode(manchester_encode(orig)))
 
 def run_decode_button(args):
-    grouped = load_relevant(args.input)
+    grouped = load_relevant(args.input, ithc=args.ithc)
     def get_button(group):
         for dft in group:
             if type(dft) == IptsDftWindowButton:
@@ -500,7 +502,7 @@ def decode_pressure_digital(button):
     return digital, v
 
 def run_decode_pressure_digital(args):
-    grouped = load_relevant(args.input)
+    grouped = load_relevant(args.input, ithc=args.ithc)
     def get_pressure(group):
         for dft in group:
             if type(dft) == IptsDftWindowPressure:
@@ -540,6 +542,7 @@ def run_decode_pressure_digital(args):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument("--ithc", help="Use the ithc loader instead of iptsd", default=False, action="store_true")
     subparsers = parser.add_subparsers(dest="command")
 
     print_report_types_parser = subparsers.add_parser('print_report_types')
@@ -566,7 +569,7 @@ if __name__ == "__main__":
     plot_iq_parser.add_argument("input", help="The iptsd dump file to open")
     plot_iq_parser.set_defaults(func=run_plot_iq)
 
-    plot_spectrogram_parser = subparsers.add_parser('plot_spectrogram')
+    plot_spectrogram_parser = subparsers.add_parser('spectrogram')
     plot_spectrogram_parser.add_argument("input", help="The iptsd dump file to open")
     plot_spectrogram_parser.add_argument("spectrogram", help="Write histogram here", default="/tmp/spectrogram.png")
     plot_spectrogram_parser.add_argument("--no-logarithm", dest="logarithm", default=True, action="store_false", help="Whether or not to take the logarithm of the norm.")

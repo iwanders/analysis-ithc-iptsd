@@ -8,6 +8,8 @@ import struct
 from enum import Enum
 from collections import namedtuple
 
+def hexify(data):
+    return "".join(f"{z:0>2x} " for z in data)
 
 # ------------------------------------------------------------------------
 # 'Known' constants.
@@ -60,11 +62,22 @@ class ReportType(Enum):
 # Convenience mixin to allow construction of struct from a byte like object.
 class Readable:
     @classmethod
+    def read_from(cls, byte_object, offset):
+        a = cls()
+        maxlen = min(len(byte_object) - offset, ctypes.sizeof(cls))
+        ctypes.memmove(ctypes.addressof(a), bytes(byte_object[offset:offset + maxlen]), maxlen)
+        return a
+    @classmethod
     def read(cls, byte_object):
         a = cls()
-        ctypes.memmove(ctypes.addressof(a), bytes(byte_object),
-                       min(len(byte_object), ctypes.sizeof(cls)))
+        maxlen = min(len(byte_object), ctypes.sizeof(cls))
+        ctypes.memmove(ctypes.addressof(a), bytes(byte_object[0:maxlen]), maxlen)
         return a
+
+    @classmethod
+    def sizeof(cls):
+        return ctypes.sizeof(cls)
+    
 
 class Convertible:
     def as_dict(self):
@@ -590,6 +603,53 @@ def parse_hid_report(data):
             break
         reports.append((report_header, data))
     return irp_header, reports
+
+# ------------------------------------------------------------------------
+# ithc? binary format helpers.
+# ------------------------------------------------------------------------
+
+# Probably combined a bit too much here, but hey, whatever.
+class IthcHeader(Base):
+    _fields_ = [("hdr_size", ctypes.c_uint8),
+                ("_pad", ctypes.c_uint8 * 3),
+                ("num", ctypes.c_uint32),
+                ("size", ctypes.c_uint32),
+               ]
+# Then follows the HIDReportFrame
+# Then 64 bytes of something we don't care about, then the reports.
+
+# Read an ithc file, return is [[ithc_header, [[report_header, report_data],...],...]
+# This return can be passed into interpret_frames to get the parsed data.
+def ithc_read(in_path):
+    with open(in_path, "rb") as f:
+        data = f.read()
+
+    packets = []
+    i = 0
+    while (len(data) - i) >= 100:
+        si = i
+        ithc_header = IthcHeader.read_from(data, si)
+        se = si + ithc_header.size + IthcHeader.sizeof()
+        hid_header = HIDReportFrame.read_from(data, si + IthcHeader.sizeof())
+        # Data is 64 bytes beyond this.
+        data_start = si + ithc_header.sizeof() + hid_header.sizeof() + 64
+        data_end = se - 1
+        record_data = data[data_start:data_end]
+        reports = []
+        remainder = record_data
+        while remainder:
+            report_header, zdata, remainder = ipts_report_header.pop_size(remainder)
+            if report_header.type == 0xff: # seems to be termination
+                # print(report_header, data)
+                reports.append((report_header, zdata))
+                break
+            reports.append((report_header, zdata))
+
+
+        packets.append((hid_header, reports))
+        i = se
+
+    return packets
 
 # ------------------------------------------------------------------------
 # IPTSD binary format helpers.
