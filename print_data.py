@@ -5,6 +5,7 @@
 
 import sys
 import json
+import os
 
 from ipts import iptsd_read, extract_reports, chunk_reports, report_lookup, ithc_read
 from ipts import IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a, IPTS_DFT_NUM_COMPONENTS, IptsDftWindow
@@ -383,8 +384,9 @@ def run_plot_spectrogram(frames):
     font_height = 12
 
     text_rows = []
-    if args.title:
-        text_rows.append([(0, args.title)])
+    if args.window_header:
+        title = os.path.basename(args.input) if args.title is None else args.title
+        text_rows.append([(0, title)])
     if args.window_header:
         def index_numbers(start, up_to):
             x = [(start + p * N, f"{p:x}") for p in range(up_to)]
@@ -629,7 +631,7 @@ if __name__ == "__main__":
     plot_spectrogram_parser.add_argument("spectrogram", help="Write histogram here", default="/tmp/spectrogram.png")
     plot_spectrogram_parser.add_argument("--no-logarithm", dest="logarithm", default=True, action="store_false", help="Whether or not to take the logarithm of the norm.")
     plot_spectrogram_parser.add_argument("--no-header", dest="window_header", default=True, action="store_false", help="Don't render the header.")
-    plot_spectrogram_parser.add_argument("--title", dest="title", default=None, help="A single line of text to put in the first row of the header.")
+    plot_spectrogram_parser.add_argument("--title", dest="title", default=None, help="A single line of text to put in the first row of the header if none, defaults to basename.")
     plot_spectrogram_parser.add_argument("--color-phase", default=False, action="store_true", help="Whether to color by phase.")
     plot_spectrogram_parser.add_argument("--decode-pressure-digital", default=False, action="store_true", help="Whether to color the decoded pressure bits.")
     plot_spectrogram_parser.add_argument("--scale", default=1.0, type=float, help="Multiply values by this before taking the log.")
