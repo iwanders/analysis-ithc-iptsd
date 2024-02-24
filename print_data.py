@@ -319,6 +319,8 @@ def run_plot_spectrogram(frames):
     for t in windows_to_plot:
         entries += window_sizes[t]
 
+
+    decoded_bits = None
     for i, group in enumerate(grouped):
         window0a_counter = 0
         row = []
@@ -330,27 +332,33 @@ def run_plot_spectrogram(frames):
                 start = accumulated_window_pos[type(dft)]
                 if window0a_counter == 1:
                     start += 2 * 16 * N
+                if type(dft) == IptsDftWindowPressure and args.decode_pressure_digital:
+                    decoded_bits, _discard = decode_pressure_digital(dft)
                 for i in range(dft.header.num_rows):
                     window = norms(dft.x[i])
                     row[start + i * N:start + (i + 1) * N] = window
                     if args.color_phase:
                         windowp = phase_calc(dft.x[i])
-                        phases[start + i * N:start + (i + 1) * N] = windowp
+                        phases[start + i * N:start + (i + 1) * N] = [phase / (math.pi * 2) for phase in windowp]
+                    if type(dft) == IptsDftWindowPressure and args.decode_pressure_digital and i > 6:
+                        phases[start + i * N:start + (i + 1) * N] = [0]*N if decoded_bits[i-7] else [0.5]*N
+                        
                 start += dft.header.num_rows * N
                 for i in range(dft.header.num_rows):
                     window = norms(dft.y[i])
                     row[start + i * N:start + (i + 1) * N] = window
                     if args.color_phase:
                         windowp = phase_calc(dft.x[i])
-                        phases[start + i * N:start + (i + 1) * N] = windowp
+                        phases[start + i * N:start + (i + 1) * N] = [phase / (math.pi * 2) for phase in windowp]
+                    if type(dft) == IptsDftWindowPressure and args.decode_pressure_digital and i > 6:
+                        row[start + i * N:start + (i + 1) * N] = [[10e3,10e3,10e3]] * len(window);
+                        phases[start + i * N:start + (i + 1) * N] = [0]*N if decoded_bits[i-7] else [0.5]*N
             if type(dft) == IptsDftWindow0x0a:
                 window0a_counter += 1
         if args.logarithm:
             row = logrow(row)
-        if args.color_phase:
-            for mags, phase_row in zip(row, phases):
-                
-                ratio = phase_row / (math.pi * 2)
+        if args.color_phase or args.decode_pressure_digital:
+            for mags, ratio in zip(row, phases):
                 r, g, b = color_map(ratio)
                 mags[0] *= r
                 mags[1] *= g
@@ -479,6 +487,17 @@ def run_decode_button(args):
 
     print("Combined: ", hexify(everything))
 
+def decode_pressure_digital(button):
+    dims = dimension_mag(button)
+    digital_active = dims[6]
+    minimum = min(dims[7:])
+    maximimum = max(dims[7:])
+    # digital = [dims[x] > digital_active/2.0 for x in range(7, button.header.num_rows)]
+    # digital = [dims[x] > ((maximimum - minimum)/2.0 + minimum) for x in range(7, button.header.num_rows)]
+    digital = [dims[x] > ((maximimum - minimum)/3.0 + minimum) for x in range(7, button.header.num_rows)]
+    v = bool_list_to_byte(digital)
+    # print(f"{digital_active: > 8} " + "  ".join(list((GREEN if digital[z] else "") + f"{v: >7d}{RESET}" for z, v in enumerate(dims[7:]))))
+    return digital, v
 
 def run_decode_pressure_digital(args):
     grouped = load_relevant(args.input)
@@ -497,16 +516,16 @@ def run_decode_pressure_digital(args):
         # print_dft(button)
 
         # collapse the dimensions, just obtain the magnitude.
-        dims = dimension_mag(button)
-        digital_active = dims[6]
-        digital = [dims[i] > digital_active for i in range(7, button.header.num_rows)]
-        print(digital)
+        digital, v = decode_pressure_digital(button)
+        # print(digital)
+        # print(thresholded)
+        # assert(digital == thresholded)
         # Check if it is a parity
-        # ones = digital[0:8].count(True)
+        ones = digital.count(True)
         # Doesn't seem to be parity... :(
         # digital.reverse()
-        v = bool_list_to_byte(digital)
         print("".join("1" if x else "0" for x in digital))
+        print(f"parity: {ones % 2}")
         p = (i, v)
         print(p)
         coords.append(p)
@@ -552,6 +571,7 @@ if __name__ == "__main__":
     plot_spectrogram_parser.add_argument("spectrogram", help="Write histogram here", default="/tmp/spectrogram.png")
     plot_spectrogram_parser.add_argument("--no-logarithm", dest="logarithm", default=True, action="store_false", help="Whether or not to take the logarithm of the norm.")
     plot_spectrogram_parser.add_argument("--color-phase", default=False, action="store_true", help="Whether to color by phase.")
+    plot_spectrogram_parser.add_argument("--decode-pressure-digital", default=False, action="store_true", help="Whether to color the decoded pressure bits.")
     plot_spectrogram_parser.add_argument("--scale", default=1.0, type=float, help="Multiply values by this before taking the log.")
     plot_spectrogram_parser.set_defaults(func=run_plot_spectrogram)
 
