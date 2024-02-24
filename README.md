@@ -365,16 +365,13 @@ After the button is released, we see the digital pattern on column 2 and 3 of th
 
 ### Barrel test M2
 
-When the button is pressed, the 0th column of the `Button` Frame does go high, as do most of the `0x0a` dft window columns.
-
-Interesting bits here is that `Position2`'s 4th column goes high when the button is pressed (compared to 3), and switches to 5 when the screen is touched, but when the button is released, it stays on `5`.
-
-A strong indicator for barrel present: `0x0a[0]`'s row 5 being higher than 4.
-
-A strong indicator for screen is touched: `Position`'s row 1 becomes bright, or `Position2` switching from 2 to 3.
-
-
 ![2024_02_20_m2_hover_button_click_touch_release_wait_hover](./media/hover_button_click_touch/2024_02_20_m2_hover_button_click_touch_release_wait_hover.png)
+
+- When the button is pressed, the 0th column of the `Button` Frame does go high, as do most of the `0x0a` dft window columns.
+- Interesting bits here is that `Position2`'s 4th column goes high when the button is pressed (compared to 3), and switches to 5 when the screen is touched, but when the button is released, it stays on `5`.
+- A strong indicator for barrel present: `0x0a[0]`'s row 5 being higher than 4.
+- A strong indicator for screen is touched: `Position`'s row 1 becomes bright, or `Position2` switching from 2 to 3.
+
 
 ### Barrel test SP Windows
 ![2024_02_20_sp_hover_button_click_touch_release_wait_hover](./media/hover_button_click_touch/2024_02_20_sp_hover_button_click_touch_release_wait_hover.png)
@@ -394,10 +391,10 @@ A strong indicator for screen is touched: `Position`'s row 1 becomes bright, or 
 ### Barrel detection
 
 We get a clear binary signal for the barrel detection with `0x0a[0]`'s row 5 being higher than 4.
-Risk here is that if `0x0a` is still used to convey a pen identifier, row 4 and 5 may only be applicable for my pens, not for everyone's.
 
+Risk here is that if `0x0a` is still used to convey a pen identifier, row 4 and 5 may only be applicable for my pens, not for everyone's, but even [NP-chaonay's PenTouch_StartTest_PressSideKey](media/npchaonay/PenTouch_StartTest_PressSideKey.png) click has the row 4 and 5 switching.
 
-The clearest visual indication however is that numerous pairs of rows are switching each group.
+The clearest visual indication is that numerous pairs of rows are switching each group.
 
 
 ## Notes
