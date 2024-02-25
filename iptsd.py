@@ -322,6 +322,46 @@ def write_states(fname, records):
         json.dump(clean_records, f)
 
 
+class ButtonGlitchFixUsing0x0a:
+    def __init__(self):
+        self.m_dft_0x0a_group = None
+        self.m_metadata = None
+        self.button = False
+
+    def feed_report(self, report):
+        from ipts import IptsPenMetadata, IptsDftWindow0x0a
+        if isinstance(report, IptsPenMetadata):
+            self.m_metadata = report
+        if isinstance(report, IptsDftWindow0x0a):
+            self.handle_window(report)
+
+    def handle_window(self, dft):
+        if dft.header.seq_num == self.m_metadata.seq_num and dft.header.data_type == self.m_metadata.data_type:
+            group = self.m_metadata.group_counter
+        else:
+            print(f"Missing group!")
+        if self.m_dft_0x0a_group == group:
+            print(f"Second time, skipping")
+        self.m_dft_0x0a_group = group
+
+        m_config_dft_button_min_mag = 1000
+        # Now, we can process the frame to determine button state.
+        # First, collapse x and y, they convey the same information.
+        mag_4 = dft.x[4].magnitude + dft.y[4].magnitude;
+        mag_5 = dft.x[5].magnitude + dft.y[5].magnitude;
+        threshold = 2 * m_config_dft_button_min_mag;
+
+        if (mag_4 < threshold and mag_5 < threshold):
+            # Not enough signal, lets disable the button
+            self.button = False
+            return
+        # One of them is above the threshold, if 5 is higher than 4, button
+        # is held.
+        self.button = mag_4 < mag_5
+        print(f"Button: {self.button}")
+
+
+
 if __name__ == "__main__":
     import sys
     z = iptsd_load(sys.argv[1])

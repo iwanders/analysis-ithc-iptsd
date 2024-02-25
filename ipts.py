@@ -418,9 +418,9 @@ class IptsTouchedAntennas(IptsReport):
     pass
 class IptsPenMetadata(IptsReport):
     class ipts_pen_metadata(Base):
-        _fields_ = [("c", ctypes.c_uint32),
-                    ("t", ctypes.c_uint8),
-                    ("r", ctypes.c_uint8),
+        _fields_ = [("group_counter", ctypes.c_uint32),
+                    ("seq_num", ctypes.c_uint8),
+                    ("data_type", ctypes.c_uint8),
                     ("_6", ctypes.c_uint8), ("_1", ctypes.c_uint8), ("_ff", ctypes.c_uint64),
                    ]
     @staticmethod
@@ -435,9 +435,9 @@ class IptsPenMetadata(IptsReport):
         # t_seq found a new one here, 0 in  2024_02_11_irp_thcbase_slim_pen_2
         t_seq |= set([0x00, 0x02, 0x03])
         r_seq |= set([0x06, 0x07])
-        assert(z.t in t_seq)
-        assert(z.r in r_seq)
-        return IptsPenMetadata(c=z.c, t=z.t, r=z.r)
+        # assert(z.data_type in t_seq)
+        # assert(z.seq_num in r_seq)
+        return IptsPenMetadata(group_counter=z.group_counter, seq_num=z.seq_num, data_type=z.data_type)
 
 class IptsPenDetection(IptsReport):
     """

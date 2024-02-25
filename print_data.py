@@ -8,7 +8,7 @@ import json
 import os
 
 from ipts import iptsd_read, extract_reports, chunk_reports, report_lookup, ithc_read, report_name_to_id
-from ipts import IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a, IPTS_DFT_NUM_COMPONENTS, IptsDftWindow
+from ipts import IptsPenMetadata, IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a, IPTS_DFT_NUM_COMPONENTS, IptsDftWindow
 from digi_info import load_digiinfo_xml
 MID = int(IPTS_DFT_NUM_COMPONENTS / 2)
 
@@ -614,6 +614,13 @@ def run_decode_pressure_digital(args):
     import matplotlib.pyplot as plt
     plt.plot([a[0] for a in coords], [a[1] for a in coords])
     plt.show()
+
+def run_test_button_0x0a(args):
+    events = load_relevant(args.input, ithc=args.ithc, report_types=set([IptsDftWindow0x0a, IptsPenMetadata]), group=False)
+    from iptsd import ButtonGlitchFixUsing0x0a
+    button_state = ButtonGlitchFixUsing0x0a()
+    for z in events:
+        button_state.feed_report(z)
         
 if __name__ == "__main__":
     import argparse
@@ -668,6 +675,12 @@ if __name__ == "__main__":
     decode_pressure_digital_parser = subparsers.add_parser('decode_pressure_digital')
     decode_pressure_digital_parser.add_argument("input", help="The iptsd dump file to open")
     decode_pressure_digital_parser.set_defaults(func=run_decode_pressure_digital)
+
+
+    button_0x0a_parser = subparsers.add_parser('test_button_0x0a')
+    button_0x0a_parser.add_argument("input", help="The iptsd dump file to open")
+    button_0x0a_parser.set_defaults(func=run_test_button_0x0a)
+
 
     args = parser.parse_args()
     if (args.command is None):
