@@ -341,7 +341,8 @@ class ButtonGlitchFixUsing0x0a:
         else:
             print(f"Missing group!")
         if self.m_dft_0x0a_group == group:
-            print(f"Second time, skipping")
+            #print(f"Second time, skipping")
+            return
         self.m_dft_0x0a_group = group
 
         m_config_dft_button_min_mag = 1000
@@ -358,7 +359,7 @@ class ButtonGlitchFixUsing0x0a:
         # One of them is above the threshold, if 5 is higher than 4, button
         # is held.
         self.button = mag_4 < mag_5
-        print(f"Button: {self.button}")
+        print(f"Button: {self.button}  mag_v: {mag_4}  mag_5: {mag_5}")
 
 
 
