@@ -96,6 +96,8 @@ First byte seems to denote the frame type. The multiple reports on the `0x1a` fr
 data actually contains this, and the data is not duplicated, first `IptsDftWindow0x0a` is different from the second.
 Should probably change this and group this based on the counter in `IptsPenMetadata` that increments with each group.
 
+Iptsd currently discards the frame id, but it is present as the first byte in `parse_with_header`.
+
 This pattern, and the sizes of individual packets are identical between Slim Pen2, Metapen M1, Metapen M2.
 Strike that, Slim Pen 2 has `0x6e` as unique frame type, which is sent on the first detection of the pen, it has its own section after this list.
 
