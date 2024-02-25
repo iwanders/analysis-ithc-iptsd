@@ -33,9 +33,6 @@ class ReportType(Enum):
     IPTS_REPORT_TYPE_STYLUS_V1                = 0x10
     IPTS_REPORT_TYPE_STYLUS_V2                = 0x60
     IPTS_REPORT_TYPE_FREQUENCY_NOISE          = 0x04
-    # ??                                      = 0x56
-    # Comes in with IRP first byte of 10 (0x0a)
-    # Only seen in 2024_02_11_irp_thcbase_metapen_m2.log
     IPTS_REPORT_TYPE_PEN_GENERAL              = 0x57
     IPTS_REPORT_TYPE_PEN_JNR_OUTPUT           = 0x58
     IPTS_REPORT_TYPE_PEN_NOISE_METRICS_OUTPUT = 0x59
@@ -48,11 +45,15 @@ class ReportType(Enum):
     IPTS_REPORT_TYPE_PEN_DETECTION            = 0x62
     IPTS_REPORT_TYPE_PEN_LIFT                 = 0x63
 
+    # Addin 0x80
+    IPTS_REPORT_TYPE_0x80                     = 0x80
+
     # Added this for uniform handling.
     IPTS_REPORT_TYPE_TERMINATION              = 0xff
     def __lt__(self, o):
         self._value_ < o._value_
 
+report_name_to_id = {k.replace("IPTS_REPORT_TYPE_", "").lower():v._value_ for k,v in ReportType.__members__.items()}
 
 # ------------------------------------------------------------------------
 # Helper utilities
@@ -490,6 +491,7 @@ report_lookup = {
     ReportType.IPTS_REPORT_TYPE_PEN_DETECTION._value_:IptsPenDetection,
     ReportType.IPTS_REPORT_TYPE_PEN_LIFT._value_:IptsPenLift,
     ReportType.IPTS_REPORT_TYPE_TERMINATION._value_:IptsTermination,
+    ReportType.IPTS_REPORT_TYPE_0x80._value_:IptsReport,
 }
 
 

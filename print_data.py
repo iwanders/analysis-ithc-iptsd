@@ -7,7 +7,7 @@ import sys
 import json
 import os
 
-from ipts import iptsd_read, extract_reports, chunk_reports, report_lookup, ithc_read
+from ipts import iptsd_read, extract_reports, chunk_reports, report_lookup, ithc_read, report_name_to_id
 from ipts import IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a, IPTS_DFT_NUM_COMPONENTS, IptsDftWindow
 from digi_info import load_digiinfo_xml
 MID = int(IPTS_DFT_NUM_COMPONENTS / 2)
@@ -16,6 +16,8 @@ RED = "\033[0;31m"
 GREEN = "\033[0;32m"
 RESET = "\033[0m"
 YELLOW = "\033[1;33m"
+LIGHT_GRAY = "\033[0;37m"
+DARK_GRAY = "\033[1;30m"
 
 
 # https://stackoverflow.com/a/312464
@@ -47,12 +49,12 @@ if True:
     assert(0xaa == bool_octet_to_byte(byte_to_bool_octet(0xaa)))
     assert(0xf0 == bool_octet_to_byte(byte_to_bool_octet(0xf0)))
 
+def hexify(data):
+    return "".join(f"{z:0>2x} " if (z != 0) else f"{DARK_GRAY}{z:0>2x}{RESET} " for z in data)
+
 def hexdump(data, columns=64):
     for row in chunks(data, columns):
-        print("".join(f"{z:0>2x} " for z in row))
-
-def hexify(data):
-    return "".join(f"{z:0>2x} " for z in data)
+        print(hexify(row))
 
 def print_dft(d, row_limit=9999, row_colors={}):
     def format_r(r):
@@ -72,14 +74,14 @@ def print_dft(d, row_limit=9999, row_colors={}):
     print_rows(d.y, "y")
 
 
-def load_relevant(fname, ithc=False):
+def load_relevant(fname, ithc=False, group=True, report_types = set([IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a])):
     loader = ithc_read if ithc else iptsd_read
     z = loader(fname)
-    report_types = set([IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition, IptsDftWindowButton, IptsDftWindowPressure, IptsDftWindowPosition2, IptsDftWindow0x08, IptsDftWindow0x0a])
     reports = extract_reports(z, report_types, with_data=True)
-    grouped = chunk_reports(reports, report_types)
-    # states = obtain_state(grouped, insert_group = True, config=config)
-    return grouped
+    if group:
+        grouped = chunk_reports(reports, report_types)
+        return grouped
+    return reports
 
 
 def run_print_report_types(args):
@@ -145,6 +147,23 @@ def run_combined(args):
                 # dft.write_report(f"/tmp/dft_chunks/{i:0>5}_{type(dft).__name__}.bin")
                 print_dft(dft)
         time.sleep(0.1)
+
+def run_print_reports(args):
+    import time
+
+    # Convert the reports into a set against which we can match the ids.
+    report_name_to_id_local = dict(report_name_to_id.items())
+    # Lets also just throw in the class names.
+    additions = {report_lookup[z].__name__: z for z in report_name_to_id.values()}
+    report_name_to_id_local.update(additions)
+
+    relevant_ids = [report_name_to_id_local[z] for z in args.reports]
+    relevant_types = set([report_lookup[z] for z in relevant_ids])
+    reports = load_relevant(args.input, ithc=args.ithc, report_types=relevant_types, group=False)
+
+    for i, report in enumerate(reports):
+        print(f"{type(report).__name__}: {hexify(report.original_data())}")
+
 
 
 def run_row_comparison(args):
@@ -605,6 +624,11 @@ if __name__ == "__main__":
     print_report_types_parser = subparsers.add_parser('print_report_types')
     print_report_types_parser.add_argument("input", help="The iptsd dump file to open")
     print_report_types_parser.set_defaults(func=run_print_report_types)
+
+    print_reports_parser = subparsers.add_parser('print_reports')
+    print_reports_parser.add_argument("input", help="The iptsd dump file to open")
+    print_reports_parser.add_argument("reports", nargs="+", help=f"The reports to print, pick from {report_name_to_id.keys()} or {list(report_lookup[z].__name__ for z in report_name_to_id.values())}")
+    print_reports_parser.set_defaults(func=run_print_reports)
 
     print_grouped_parser = subparsers.add_parser('print_grouped')
     print_grouped_parser.add_argument("input", help="The iptsd dump file to open")
