@@ -3,6 +3,13 @@
 This is the new dumping ground of discoveries and notes, such that the README.md file can stay clean.
 
 
+## On Open questions
+
+### Does the screen report which MPP version was used?
+
+`IptsPenMetadata` Does not seem to carry this information it is pretty much identical between all three pens;
+
+
 ## IptsPenGeneral
 64 bytes
 ```
@@ -22,7 +29,7 @@ Seq; Counter only got below 16 bit counts in recording. Seq matches IptsPenMetad
  23 9d 00 00 01 06 06 01 ff ff ff ff ff ff ff ff
 |C          |T |R |------------------------------
 ```
-- C: Increments, but only every 7 entries, This matches seq from IptsPenGeneral.
+- C: Increments, but only every 7 entries, This matches seq from IptsPenGeneral. Oh, Quo filed a PR that includes this as group id. Makes sense as it only increments once for each group of frames.
 - T: C increments if this is `0x01`, sequence is             `0x01, 0x04, 0x02, 0x05, 0x06, 0x0a, 0x0d`
 - R: Follows C? T at `0x01` has this at `0x06`, sequence is: `0x06, 0x07, 0x09, 0x0a, 0x0a, 0x0b, 0x08`
 
@@ -66,6 +73,21 @@ For Metapen M2 and Slim Pen 2:
 63804   8256 
 65103   2064 
 ```
+
+The flags may indicate contact with the screen;
+```
+IptsPenDetection: 98 03 02 00 48 01 02 00 01 03 00 00 05 0a 0b 80 
+IptsPenDetection: 40 30 04 00 20 4f 04 00 01 04 00 00 02 0d 08 80 
+IptsPenDetection: 50 58 00 00 50 4e 00 00 01 03 00 00 00 01 06 80 
+IptsPenDetection: 3c f9 03 00 40 20 04 00 04 03 03 00 07 04 07 80 
+IptsPenDetection: 4c 04 00 00 00 00 00 00 01 03 03 00 03 02 09 80 
+IptsPenDetection: 4a 97 00 00 50 92 00 00 04 00 00 00 04 05 0a 80 
+IptsPenDetection: 4a 97 00 00 50 92 00 00 04 00 00 00 04 06 0a 80 
+IptsPenDetection: 98 03 02 00 48 01 02 00 04 03 03 00 05 0a 0b 80 
+                                         |c |
+```
+The `c` column does seem to switch from `01` to `04`, but not much else here.
+
 
 ## IptsMagnitude
 ```

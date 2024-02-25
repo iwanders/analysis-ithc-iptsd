@@ -50,6 +50,8 @@ Okay, so the main goals for me are:
 
 - Get a better understanding of how this all works, what data is there, how is it used, just for learning.
 - Fix the button glitching that happens with my Surface Pro 9 and Slim Pen 2.
+- Tilt seems glitchy at times, depending on pen angle.
+- Perhaps make the pen position less 'wavy'.
 
 ## Summary of my current understanding
 
@@ -63,11 +65,15 @@ Okay, so the main goals for me are:
 - Pressure window `0x07-0x0F` holds a digital representation of the pressure, likely only a delta. Information is not spread & repeated across multiple groups.
 - The first column of the Button DFT window frame is not accurate for MPP 2.0+, 
 
+## Open Questions
+
+- Does the screen report which MPP version was used?
+
 ## Hardware
 
 I obtained a few pens:
 
-- [Microsoft Surface Slim Pen 2](https://www.microsoft.com/en-ca/d/surface-slim-pen-2/8tb9xw8rwc14) (denoted SP) is MPP v2.6, 4096 pressure levels, digitizer ID is `0x97d8f7ad`.
+- [Microsoft Surface Slim Pen 2](https://www.microsoft.com/en-ca/d/surface-slim-pen-2/8tb9xw8rwc14) (denoted SP) is MPP v2.6, 4096 pressure levels, digitizer ID is `0x97d8f7ad`, bluetooth Endpoint Address lists `f3:cb:67:04:2a:05`.
 - [Metapen M1](https://metapen.com/products/m1) (denoted M1) is MPP 1.51, 1024 pressure levels
 - [Metapen M2](https://metapen.com/products/m2) (denoted M2) is MPP 2.0, 4096 pressure levels
 
@@ -401,7 +407,6 @@ Risk here is that if `0x0a` is still used to convey a pen identifier, row 4 and 
 
 The clearest visual indication is that numerous pairs of rows are switching each group.
 
-
 ## Notes
 
 I've moved my work in progress notes to the [notes.md](notes.md) file.
@@ -409,3 +414,4 @@ I've moved my work in progress notes to the [notes.md](notes.md) file.
 
 [US9018547]: https://patents.google.com/patent/US9018547/
 [US8669967]: https://patents.google.com/patent/US8669967B2/
+
