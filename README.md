@@ -46,10 +46,13 @@ Unfortunately, Microsoft Pen Protocol itself is not a publically available speci
 
 # Analysis
 
+
+## Goals
 Okay, so the main goals for me are:
 
 - Get a better understanding of how this all works, what data is there, how is it used, just for learning.
-- Fix the button glitching that happens with my Surface Pro 9 and Slim Pen 2.
+- Fix the button glitching that happens with my Surface Pro 9 and Slim Pen 2. See the [Barrel Detection](#barrel-detection) section.
+- Make the 'contact' detection more reliable. (Support what they call `Zero force inking`).
 - Tilt seems glitchy at times, depending on pen angle.
 - Perhaps make the pen position less 'wavy'.
 
@@ -59,6 +62,7 @@ Okay, so the main goals for me are:
 - On Windows, the driver sends a message that has the digitizer id every 2-3 frames.
 - On Windows, the Slim Pen 2 does not have the binary pattern in the `0x0a` dft windows.
 - On Windows, we see the binary pattern in the `0x0a` dft windows, on Linux we see the same for the Slim Pen 2.
+- On Windows, the driver interpolates (nonlinearly) between pen readings, roughly 1:5 ratio.
 - For all digital data the `x` and `y` signals can be combined into each other.
 - The binary pattern in `0x0a` goes away if the barrel button is held, then the rows become alternating each group.
 - The DftButton window holds repeating binary patterns in column 2 and 3, column 1 is the marker. This is unique per pen.
@@ -76,6 +80,7 @@ I obtained a few pens:
 - [Microsoft Surface Slim Pen 2](https://www.microsoft.com/en-ca/d/surface-slim-pen-2/8tb9xw8rwc14) (denoted SP) is MPP v2.6, 4096 pressure levels, digitizer ID is `0x97d8f7ad`, bluetooth Endpoint Address lists `f3:cb:67:04:2a:05`.
 - [Metapen M1](https://metapen.com/products/m1) (denoted M1) is MPP 1.51, 1024 pressure levels
 - [Metapen M2](https://metapen.com/products/m2) (denoted M2) is MPP 2.0, 4096 pressure levels
+- ['Slim Pen For Surface'](https://www.aliexpress.com/item/1005006352929740.html) (denoted CN) is MPP 2.0, claimed 4096 pressure levels[^1]
 
 ## Data
 
@@ -250,6 +255,8 @@ more sync markers. Same with the metapen m1, also 22 bytes.
 
 On Slim Pen 2, bit ratio of 1s to 0s is 1.14, metapen m2 is at 1.25. Likely whitened data.
 
+Note that we don't even know if row 2 being high represents a `1` or row 3 represents a `1`, maybe it even takes more than one
+frame to convey a single bit. 
 
 For the slim pen 2 we clearly know the start and end of the transmission.
 This sequence doesn't appear to change, even on Linux it is identical to Windows.
@@ -260,10 +267,11 @@ if we align the metapen's against the most matching data from the slim pen we ob
 ```
 For the Slim Pen 2: 7a 99 ca 56 97 19 1e 58 2d 58 b4 9d 10 77 38 4c d5 12 da 80
 For Metapen M2      7f 9c 75 84 6f 7c 63 68 59 30 57 30 4c d4 41 dc 3a 58 31 5c 2f bc 7f 9c 75 84 6f...
-For Metapen M1      78 8c 75 84 6d 68 61 7c 59 30 55 24 49 d0 45 c4 3e 40 32 54 2f bc 78 8c 75 84 6d ...
+For Metapen M1      78 8c 75 84 6d 68 61 7c 59 30 55 24 49 d0 45 c4 3e 40 32 54 2f bc 78 8c 75 84 6d...
+For CN-Pen          2e a0 7d 88 74 98 6f 7c 63 68 5f 3c 56 2c 4f dc 47 d0 3f 5c 34 58 2e a0 7d 88 74...
 ```
 
-From NP data, which is a Slim Pen 2, but a different id
+From NP data, which is a Slim Pen 2, but likely a different digitizer id:
 ```
 NP Slim Pen 2: 79 91 c2 06 a7 99 dc 58 2d 44 f4 9d 10 30 39 50 d5 12 da 80
 My Slim Pen 2: 7a 99 ca 56 97 19 1e 58 2d 58 b4 9d 10 77 38 4c d5 12 da 80
@@ -313,7 +321,7 @@ After the initial detection, the `0x6e` frame is sent, and the Windows driver st
                           |digitizer  |
 ```
 
-Probalby to communicate to the hardware that the stylus it is still being tracked and it doesn't have to send its 'init' transmission again.
+Probably to communicate to the hardware that the stylus it is still being tracked and it doesn't have to send its 'init' transmission again.
 
 ### Slim Pen 2 Linux
 
@@ -322,6 +330,12 @@ It is possible that it falls back to MPP 2.0 functionality in the linux case?
 Does this, combined with this screen cause the wavy positions?
 
 ![2024_02_24_linux_sp_hover_and_contact_small_circle](./media/hover_touch_small_circle/2024_02_24_linux_sp_hover_and_contact_small_circle.png)
+
+### CN (Linux)
+
+Even this pen shows the binary data!
+
+![2024_02_25_linux_cn_hover_and_contact_small_circle][./media/hover_touch_small_circle/2024_02_25_linux_cn_hover_and_contact_small_circle.png)
 
 ## IptsDftWindowPressure
 
@@ -350,6 +364,13 @@ Digital data takes longer to reach `0b010101111` state.
 
 ![2024_02_22_slim_pen_pressure](./media/saturating_pressure/2024_02_22_slim_pen_pressure.png)
 
+
+### Saturating pressure on the CN (Linux)
+
+Looks as quick as M2, I wouldn't be surprised if the claim of 4096 pressure levels is a lie.
+
+![2024_02_25_linux_cn_pen_pressure](./media/saturating_pressure/2024_02_25_linux_cn_pen_pressure.png)
+
 ### Pressure thoughts
 
 - Could be encoding the pressure change between transmissions? That would explain why the SP takes longer to transmit its delta.
@@ -357,6 +378,27 @@ Digital data takes longer to reach `0b010101111` state.
 - Clearly not repeating the same data over multiple groups.
 - Likely conveys scale together with a value, that would explain why it is still so 'busy' when normal pen motion happens, it's communicating small changes accurately then.
 - If this is a delta, the driver needs some way to tell the pen it lost track and it needs to start fresh?
+
+
+
+### Contact detection
+
+The current contact detection uses the analog signal, but there's clearly more reliably data available.
+
+So many options:
+- `Position` row 1 becoming strong, switches to row 2 when raised.
+- `Position2` switching from 2 to 3 when there's contact.
+
+It would be so much easier to just use the digital signal in the pressure frame, but as we can see:
+
+![this spectrogram](hover_touch_small_circle/2024_02_24_linux_sp_hover_and_contact_small_circle.png)
+
+there are three signals that stay high, so just comparing against Pressure 6 is less than ideal.
+
+Lets just go for `Position2` row 2 and 3 switching.
+
+Position 1 row 1 is currently used for tilt... which explains why tilt does not update when we are not touching the screen.
+
 
 ## Detecting Barrel Button & Touch
 
@@ -401,11 +443,19 @@ After the button is released, we see the digital pattern on column 2 and 3 of th
 - A strong indicator for barrel present: `0x0a[0]`'s row 5 being higher than 4. (Same as m2 and SP windows)
 - A strong indicator for screen is touched: `Position`'s row 1 becomes bright, or `Position2` switching from 2 to 3. (Same as m2 and SP windows)
 
+### Barrel test CN Linux
+
+![2024_02_25_linux_cn_hover_button_click_touch_release_wait_hover](./media/hover_button_click_touch/2024_02_25_linux_cn_hover_button_click_touch_release_wait_hover.png)
+
+Behaves the same as the SP and M2 pens.
+
 ### Barrel detection
 
 We get a clear binary signal for the barrel detection with `0x0a[0]`'s row 5 being higher than 4.
 
 Risk here is that if `0x0a` is still used to convey a pen identifier, row 4 and 5 may only be applicable for my pens, not for everyone's, but even [NP-chaonay's PenTouch_StartTest_PressSideKey](media/npchaonay/PenTouch_StartTest_PressSideKey.png) click has the row 4 and 5 switching.
+
+Going with that comparison for now, it seems to be robust and easily identified. Magnitude is strong.
 
 The clearest visual indication is that numerous pairs of rows are switching each group.
 
@@ -416,4 +466,7 @@ I've moved my work in progress notes to the [notes.md](notes.md) file.
 
 [US9018547]: https://patents.google.com/patent/US9018547/
 [US8669967]: https://patents.google.com/patent/US8669967B2/
+
+[^1]: 8$ from AliExpress, looks surprisingly like the [Renaisser Rapheal Slim Stylus for Surface](https://renaisser.com/products/raphael-slim).
+
 
