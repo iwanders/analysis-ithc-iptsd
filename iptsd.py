@@ -345,13 +345,14 @@ class ButtonGlitchFixUsing0x0a:
             return
         self.m_dft_0x0a_group = group
 
-        m_config_dft_button_min_mag = 1000
+        m_config_dft_button_min_mag = 50000
         # Now, we can process the frame to determine button state.
         # First, collapse x and y, they convey the same information.
         mag_4 = dft.x[4].magnitude + dft.y[4].magnitude;
         mag_5 = dft.x[5].magnitude + dft.y[5].magnitude;
         threshold = 2 * m_config_dft_button_min_mag;
 
+        print(f"mag_v: {mag_4}  mag_5: {mag_5}")
         if (mag_4 < threshold and mag_5 < threshold):
             # Not enough signal, lets disable the button
             self.button = False
