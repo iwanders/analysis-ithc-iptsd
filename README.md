@@ -335,7 +335,7 @@ Does this, combined with this screen cause the wavy positions?
 
 Even this pen shows the binary data!
 
-![2024_02_25_linux_cn_hover_and_contact_small_circle][./media/hover_touch_small_circle/2024_02_25_linux_cn_hover_and_contact_small_circle.png)
+![2024_02_25_linux_cn_hover_and_contact_small_circle](./media/hover_touch_small_circle/2024_02_25_linux_cn_hover_and_contact_small_circle.png)
 
 ## IptsDftWindowPressure
 
@@ -391,7 +391,7 @@ So many options:
 
 It would be so much easier to just use the digital signal in the pressure frame, but as we can see:
 
-![this spectrogram](hover_touch_small_circle/2024_02_24_linux_sp_hover_and_contact_small_circle.png)
+![this spectrogram](./media/hover_touch_small_circle/2024_02_24_linux_sp_hover_and_contact_small_circle.png)
 
 there are three signals that stay high, so just comparing against Pressure 6 is less than ideal.
 
