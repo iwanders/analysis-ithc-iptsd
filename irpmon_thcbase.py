@@ -15,6 +15,14 @@ import pickle
 import os
 import argparse
 
+
+RED = "\033[0;31m"
+GREEN = "\033[0;32m"
+RESET = "\033[0m"
+YELLOW = "\033[1;33m"
+LIGHT_GRAY = "\033[0;37m"
+DARK_GRAY = "\033[1;30m"
+
 from ipts import *
 
 # https://stackoverflow.com/a/312464
@@ -28,7 +36,7 @@ def hexdump(data, columns=64):
         print("".join(f"{z:0>2x} " for z in row))
 
 def hexify(data):
-    return "".join(f"{z:0>2x} " for z in data)
+    return "".join(f"{z:0>2x} " if (z != 0) else f"{DARK_GRAY}{z:0>2x}{RESET} " for z in data)
 
 # Helper to hold the relevant fields from the log records.
 Irp = namedtuple("Irp", [
@@ -290,10 +298,6 @@ def run_convert(args):
 
     iptsd_write(args.out_file, packets)
 
-
-RED = "\033[0;31m"
-GREEN = "\033[0;32m"
-RESET = "\033[0m"
 def run_print_setup(args):
     records = load_file(args.in_file, limit=args.limit)
     records = discard_pnp(records)
@@ -315,15 +319,17 @@ def run_print_setup(args):
         if (prev_data == r.data):
             print("Duplicate data with prior!")
         else:
-            print(hexdump(r.data))
+            print(hexify(r.data))
         
+        if r.data[0] == 0x6e:
+            break;
         if first == 0x50:
             # data_from_0x50 += bytearray(r.data)
             print(" wide array: " + "".join(chr(z) for z in r.data[::2]))
 
         prev_data = r.data
-        if i > 75:
-            break;
+        # if i > 75:
+            # break;
 
 
 

@@ -10,7 +10,7 @@ License is GPL, just like [iptsd](https://github.com/linux-surface/iptsd).
 
 Further things to be aware of when reading this document:
 - Nothing in this document is to be assumed as accurate or correct, it's all speculative.
-- This is a repo I made for myself, information deemed accurate should probably be migrated to the iptsd wiki. Not as PRs into this repo.
+- This is a repo I made for myself, information deemed accurate should probably be migrated to the iptsd wiki.
 
 
 I named the images `spectrogram`, while technically incorrect they do look a lot like spectrograms, y axis is time (increasing towards the bottom).
@@ -53,25 +53,29 @@ Okay, so the main goals for me are:
 - Get a better understanding of how this all works, what data is there, how is it used, just for learning.
 - Fix the button glitching that happens with my Surface Pro 9 and Slim Pen 2. See the [Barrel Detection](#barrel-detection) section.
 - Make the 'contact' detection more reliable. (Support what they call `Zero force inking`).
-- Tilt seems glitchy at times, depending on pen angle.
+- Tilt seems glitchy at times, depending on pen angle, position as well sometimes.
 - Perhaps make the pen position less 'wavy'.
 
 ## Summary of my current understanding
 
+- On Windows, the hardware sends a magical `0x6e` frame that holds the digitizer id.
+- On Windows, the `0x6e` frame is seen after the driver sends the digitizer id to the hardware.
+- On Windows, the driver sends a message to the hardware that has the digitizer id every 2-3 frames.
 - On Linux, we currently don't get the `0x6e` frame; Perhaps it is in a different mode?
-- On Windows, the driver sends a message that has the digitizer id every 2-3 frames.
 - On Windows, the Slim Pen 2 does not have the binary pattern in the `0x0a` dft windows.
-- On Windows, we see the binary pattern in the `0x0a` dft windows, on Linux we see the same for the Slim Pen 2.
+- On Windows, we see the binary pattern for m2 in the `0x0a` dft windows, on Linux we see the same for the Slim Pen 2.
 - On Windows, the driver interpolates (nonlinearly) between pen readings, roughly 1:5 ratio.
 - For all digital data the `x` and `y` signals can be combined into each other.
 - The binary pattern in `0x0a` goes away if the barrel button is held, then the rows become alternating each group.
 - The DftButton window holds repeating binary patterns in column 2 and 3, column 1 is the marker. This is unique per pen.
 - Pressure window `0x07-0x0F` holds a digital representation of the pressure, likely only a delta. Information is not spread & repeated across multiple groups.
-- The first column of the Button DFT window frame is not accurate for MPP 2.0+, 
+- The first column of the Button DFT window frame is not accurate for MPP 2.0+.
 
 ## Open Questions
 
 - Does the screen report which MPP version was used?
+- The CN pen has the `0x0a[0]` 4 & 5 switch when erasing, so that's detected as a button.
+- Is there any value in setting the screen the mode where it reports digitizer id?
 
 ## Hardware
 
@@ -228,7 +232,8 @@ Adding special handling in the parsing for `0x6e` header, it is 29 bytes long, w
 ```
 The `0x6e` frame sits between the `0x1a` frame and the `0x0d` frame. This frame is sent when the screen detects the pen, it shows up in spectrogram as a black line.
 
-
+## On the bootlog
+See [notes_windows_bootlog.md](notes_windows_bootlog.md) for details.
 
 ## On DFTs
 
@@ -450,6 +455,9 @@ After the button is released, we see the digital pattern on column 2 and 3 of th
 ![2024_02_25_linux_cn_hover_button_click_touch_release_wait_hover](./media/hover_button_click_touch/2024_02_25_linux_cn_hover_button_click_touch_release_wait_hover.png)
 
 Behaves the same as the SP and M2 pens.
+
+- A strong indicator for barrel present: `0x0a[0]`'s row 5 being higher than 4. (Same as m2 and SP windows)
+- The strong barrel indicator in `0x0a[0]` row 4 and 5 also triggers when the eraser is held!
 
 ### Barrel detection
 
