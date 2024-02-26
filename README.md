@@ -80,7 +80,9 @@ I obtained a few pens:
 - [Microsoft Surface Slim Pen 2](https://www.microsoft.com/en-ca/d/surface-slim-pen-2/8tb9xw8rwc14) (denoted SP) is MPP v2.6, 4096 pressure levels, digitizer ID is `0x97d8f7ad`, bluetooth Endpoint Address lists `f3:cb:67:04:2a:05`.
 - [Metapen M1](https://metapen.com/products/m1) (denoted M1) is MPP 1.51, 1024 pressure levels
 - [Metapen M2](https://metapen.com/products/m2) (denoted M2) is MPP 2.0, 4096 pressure levels
-- ['Slim Pen For Surface'](https://www.aliexpress.com/item/1005006352929740.html) (denoted CN) is MPP 2.0, claimed 4096 pressure levels[^1]
+- ['Slim Pen For Surface'](https://www.aliexpress.com/item/1005006352929740.html) (denoted CN) is MPP 2.0, claimed 4096 pressure levels[^cnpen]
+
+The M1 and the CN pen both have the eraser AND the barrel button as buttons next to each other on the side. The M2 and SP have the eraser on the rear.
 
 ## Data
 
@@ -467,6 +469,6 @@ I've moved my work in progress notes to the [notes.md](notes.md) file.
 [US9018547]: https://patents.google.com/patent/US9018547/
 [US8669967]: https://patents.google.com/patent/US8669967B2/
 
-[^1]: 8$ from AliExpress, looks surprisingly like the [Renaisser Rapheal Slim Stylus for Surface](https://renaisser.com/products/raphael-slim).
+[^cnpen]: from AliExpress, looks surprisingly like the [Renaisser Rapheal Slim Stylus for Surface](https://renaisser.com/products/raphael-slim).
 
 
