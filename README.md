@@ -22,6 +22,8 @@ The dft rows are thus columns in this representation:
 
 Intensity is scaled based on the highest value in the horizontal image row (so if the entire row is low value noise, it will still show up).
 
+Data used for all this analysis is available in the [v0.0.1](https://github.com/iwanders/analysis-ithc-iptsd/releases/tag/v0.0.1) release.
+
 ## Structure of this repo
 
 It's a bit of a mess, since this grew organically as I needed new functionality. The important parts are:
